@@ -1633,7 +1633,6 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'){const m=doc
  document.addEventListener('DOMContentLoaded',()=>{setTimeout(()=>renderTreasuryFinal(),500);['dashboardPeriod','cashPeriod','pgPeriod','closePeriod','execPeriod'].forEach(id=>{const e=document.getElementById(id);if(e)e.addEventListener('change',()=>setTimeout(()=>renderTreasuryFinal(e.value),30));});});
  window.renderTreasuryFinal=renderTreasuryFinal;
 })();
-})();
 </script>
 
 <script src="config.js"></script>
