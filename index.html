@@ -589,19 +589,111 @@ function showAPHistory(id){
 }
 
 function apGroupSummary(){
- apModal.classList.add('open');apModalTitle.textContent='Resumen de obligaciones por tercero';
- const map={};apAccounts.forEach(a=>{const k=a.third||'SIN TERCERO';if(!map[k])map[k]={caused:0,paid:0,balance:0,count:0};map[k].caused+=+a.amount||0;map[k].paid+=(a.payments||[]).reduce((s,p)=>s+(+p.amount||0),0);map[k].balance+=apBalance(a);map[k].count++});
- const rows=Object.entries(map).sort((a,b)=>b[1].balance-a[1].balance);
- apFormArea.innerHTML=(rows.length?'<table class="ap-table"><thead><tr><th>TERCERO</th><th>CUENTAS</th><th class="right">CAUSADO</th><th class="right">PAGADO</th><th class="right">SALDO</th></tr></thead><tbody>'+rows.map(([k,v])=>'<tr><td><b>'+k+'</b></td><td>'+v.count+'</td><td class="right">'+apMoney(v.caused)+'</td><td class="right">'+apMoney(v.paid)+'</td><td class="right"><b>'+apMoney(v.balance)+'</b></td></tr>').join('')+'</tbody></table>':'<p class="muted">No hay obligaciones registradas.</p>')+'<div style="margin-top:20px;text-align:right"><button class="ap-btn secondary" onclick="closeAP()">Cerrar resumen</button></div>';
+  apModal.classList.add('open');
+  apModalTitle.textContent='Resumen de obligaciones por tercero';
+
+  const map={};
+
+  apAccounts.forEach(a=>{
+    const k=a.third || 'SIN TERCERO';
+
+    if(!map[k]){
+      map[k]={
+        caused:0,
+        paid:0,
+        balance:0,
+        count:0
+      };
+    }
+
+    map[k].caused+=Number(a.amount)||0;
+
+    const paid=(a.payments||[]).reduce((s,p)=>{
+      return s+(Number(p.amount)||0);
+    },0);
+
+    map[k].paid+=paid;
+    map[k].balance+=apBalance(a);
+    map[k].count++;
+  });
+
+  const rows=Object.entries(map)
+    .sort((a,b)=>b[1].balance-a[1].balance);
+
+  apFormArea.innerHTML=rows.length
+    ? `
+      <table class="ap-table">
+        <thead>
+          <tr>
+            <th>TERCERO</th>
+            <th>CUENTAS</th>
+            <th class="right">CAUSADO</th>
+            <th class="right">PAGADO</th>
+            <th class="right">SALDO</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows.map(([name,r])=>`
+            <tr>
+              <td>${name}</td>
+              <td>${r.count}</td>
+              <td class="right">${apMoney(r.caused)}</td>
+              <td class="right">${apMoney(r.paid)}</td>
+              <td class="right">${apMoney(r.balance)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `
+    : '<p class="muted">No hay obligaciones registradas.</p>';
 }
+
 function exportAP(){
- const head='TERCERO,CONCEPTO,TIPO,FECHA,CAUSADO,PAGADO,SALDO,ESTADO\\n';
- const csv=head+apAccounts.map(a=>[a.third,a.description,a.type,a.date,a.amount,(a.payments||[]).reduce((s,p)=>s+p.amount,0),apBalance(a),apStatusOf(a)].map(v=>'"'+String(v).replaceAll('"','""')+'"').join(',')).join('\\n');
- const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}),url=URL.createObjectURL(blob),x=document.createElement('a');x.href=url;x.download='Cuentas_por_Pagar.csv';x.click();URL.revokeObjectURL(url);
+  const head='TERCERO,CONCEPTO,TIPO,FECHA,CAUSADO,PAGADO,SALDO,ESTADO\\n';
+
+  const csv=head+apAccounts.map(a=>{
+    const paid=(a.payments||[]).reduce((s,p)=>{
+      return s+(Number(p.amount)||0);
+    },0);
+
+    const balance=apBalance(a);
+    const status=apStatusOf(a);
+
+    return [
+      a.third,
+      a.description,
+      a.type,
+      a.date,
+      a.amount,
+      paid,
+      balance,
+      status
+    ].map(v=>'"'+String(v||'').replaceAll('"','""')+'"').join(',');
+  }).join('\\n');
+
+  const blob=new Blob(
+    [csv],
+    {type:'text/csv;charset=utf-8;'}
+  );
+
+  const url=URL.createObjectURL(blob);
+  const x=document.createElement('a');
+
+  x.href=url;
+  x.download='Cuentas_por_Pagar.csv';
+
+  x.click();
+
+  URL.revokeObjectURL(url);
 }
+
 document.addEventListener('DOMContentLoaded',()=>{
-  renderP();
+  renderAP();
 });
+
+renderAP();
+
+</script>
 </script>
 
 <section class="page" id="tesoreria-control">
