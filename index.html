@@ -1543,4 +1543,16 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'){const m=doc
 })();
 <script src="config.js"></script>
 <script src="api.js"></script>
+
+ <script>
+  console.log('Control Hotel Frontend iniciado');
+
+  ControlHotelAPI.health()
+    .then(data => {
+      console.log('✅ Backend conectado:', data);
+    })
+    .catch(error => {
+      console.error('❌ Error conectando Backend:', error);
+    });
+</script>
 </script></body></html>
