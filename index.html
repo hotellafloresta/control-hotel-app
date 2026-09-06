@@ -630,22 +630,77 @@ function showAPHistory(id){
 }
 
 function apGroupSummary(){
-  apModal.classList.add('open');
-  apModalTitle.textContent='Resumen de obligaciones por tercero';
+  const modal=document.getElementById('apModal');
+  const area=document.getElementById('apFormArea');
+
+  if(!modal || !area) return;
+
+  modal.classList.add('open');
+
+  const title=document.getElementById('apModalTitle');
+  if(title){
+    title.textContent='Resumen de obligaciones por tercero';
+  }
 
   const map={};
 
   apAccounts.forEach(a=>{
-    const k=a.third || 'SIN TERCERO';
+    const key=a.third || 'SIN TERCERO';
 
-    if(!map[k]){
-      map[k]={
+    if(!map[key]){
+      map[key]={
         caused:0,
         paid:0,
         balance:0,
         count:0
       };
     }
+
+    map[key].caused+=Number(a.amount)||0;
+
+    const paid=(a.payments||[]).reduce((s,p)=>{
+      return s+(Number(p.amount)||0);
+    },0);
+
+    map[key].paid+=paid;
+    map[key].balance+=apBalance(a);
+    map[key].count++;
+  });
+
+  const rows=Object.entries(map)
+    .sort((a,b)=>b[1].balance-a[1].balance);
+
+  area.innerHTML=rows.length
+    ? '<table class="ap-table">'+
+        '<thead>'+
+          '<tr>'+
+            '<th>TERCERO</th>'+
+            '<th>CUENTAS</th>'+
+            '<th class="right">CAUSADO</th>'+
+            '<th class="right">PAGADO</th>'+
+            '<th class="right">SALDO</th>'+
+          '</tr>'+
+        '</thead>'+
+        '<tbody>'+
+          rows.map(([name,r])=>
+            '<tr>'+
+              '<td>'+name+'</td>'+
+              '<td>'+r.count+'</td>'+
+              '<td class="right">'+apMoney(r.caused)+'</td>'+
+              '<td class="right">'+apMoney(r.paid)+'</td>'+
+              '<td class="right">'+apMoney(r.balance)+'</td>'+
+            '</tr>'
+          ).join('')+
+        '</tbody>'+
+      '</table>'+
+      '<div style="margin-top:20px">'+
+        '<button class="ap-btn secondary" onclick="closeAP()">Cerrar</button>'+
+      '</div>'
+    : '<p class="muted">No hay obligaciones registradas.</p>'+
+      '<div style="margin-top:20px">'+
+        '<button class="ap-btn secondary" onclick="closeAP()">Cerrar</button>'+
+      '</div>';
+}
 
     map[k].caused+=Number(a.amount)||0;
 
