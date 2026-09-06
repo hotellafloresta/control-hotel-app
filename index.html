@@ -514,81 +514,186 @@ function renderAP(){
 }
 
 function openAPModal(mode){
- apModal.classList.add('open');
- if(mode==='new'){
-  apModalTitle.textContent='Nueva cuenta causada';
-  apFormArea.innerHTML='<div class="ap-form">'+
-   '<label>Tercero / beneficiario<input id="apThird" placeholder="Nombre del proveedor o empleado"></label>'+
-   '<label>Tipo de obligación<select id="apNewType">'+Object.keys(AP_TYPES).map(x=>'<option>'+x+'</option>').join('')+'</select></label>'+
-   '<label class="full">Concepto / descripción<input id="apDesc" placeholder="Ej. Factura servicio energía · Agosto 2026"></label>'+
-   '<label>Fecha de causación<input id="apDate" type="date" value="'+new Date().toISOString().slice(0,10)+'"></label>'+
-   '<label>Valor causado<input id="apAmount" type="number" min="1"></label>'+
-   '<label>Fecha de vencimiento<input id="apDue" type="date"></label>'+
-   '<label>Código de pago asociado<input id="apCode" readonly></label>'+
-   '<div class="full"><button class="ap-btn" onclick="saveNewAP()">Guardar obligación</button> <button class="ap-btn secondary" onclick="closeAP()">Cancelar</button></div></div>';
-  apNewType.onchange=()=>apCode.value=AP_TYPES[apNewType.value];
-  apCode.value=AP_TYPES[apNewType.value];
- }
- if(mode==='payment'){
- const thirds=[...new Set(apAccounts.map(a=>String(a.third||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
- apModalTitle.textContent='Registrar abono o pago';
- apFormArea.innerHTML='<div class="ap-form">'+
- '<label class="full">Tercero / proveedor<input id="apPayThird" list="apPayThirdList" autocomplete="off" placeholder="Escribe o selecciona el tercero"><datalist id="apPayThirdList">'+thirds.map(x=>'<option value="'+x.replace(/"/g,'&quot;')+'">').join('')+'</datalist></label>'+
- '<label class="full">Obligación pendiente<select id="apPayAccount"><option value="">Selecciona primero el tercero</option></select></label>'+
- '<div class="full" id="apPayInfo"><p class="muted">Al seleccionar el tercero aparecerá automáticamente el saldo pendiente.</p></div>'+
- '<label>Fecha de pago<input id="apPayDate" type="date" value="'+new Date().toISOString().slice(0,10)+'"></label>'+
- '<label>Valor a pagar / abonar<input id="apPayAmount" type="number" min="1" placeholder="Digite el abono"></label>'+
- '<label>Forma de pago<select id="apPayMethod"><option>Efectivo</option><option>Transferencia</option><option>Nequi</option><option>Daviplata</option><option>Cheque</option><option>Otro</option></select></label>'+
- '<label>Referencia / comprobante<input id="apPayRef" placeholder="Opcional"></label>'+
- '<div class="full"><button class="ap-btn" onclick="saveAPPayment()">Registrar pago / abono</button> <button class="ap-btn secondary" onclick="closeAP()">Cancelar</button></div></div>';
- apPayThird.addEventListener('input',filterAPAccountsByThird);
- apPayThird.addEventListener('change',filterAPAccountsByThird);
- apPayAccount.onchange=updateAPPaymentInfo;
 
-  filterAPAccountsByThird();
-  function filterAPAccountsByThird(){
+  apModal.classList.add('open');
+
+  if(mode==='new'){
+
+    apModalTitle.textContent='Nueva cuenta causada';
+
+    apFormArea.innerHTML=
+      '<div class="ap-form">'+
+        '<label>Tercero / beneficiario'+
+          '<input id="apThird" placeholder="Nombre del proveedor o empleado">'+
+        '</label>'+
+
+        '<label>Tipo de obligación'+
+          '<select id="apNewType">'+
+            Object.keys(AP_TYPES).map(x=>'<option>'+x+'</option>').join('')+
+          '</select>'+
+        '</label>'+
+
+        '<label class="full">Concepto / descripción'+
+          '<input id="apDesc" placeholder="Ej. Factura servicio energía · Agosto 2026">'+
+        '</label>'+
+
+        '<label>Fecha de causación'+
+          '<input id="apDate" type="date" value="'+new Date().toISOString().slice(0,10)+'">'+
+        '</label>'+
+
+        '<label>Valor causado'+
+          '<input id="apAmount" type="number" min="1">'+
+        '</label>'+
+
+        '<label>Fecha de vencimiento'+
+          '<input id="apDue" type="date">'+
+        '</label>'+
+
+        '<label>Código de pago asociado'+
+          '<input id="apCode" readonly>'+
+        '</label>'+
+
+        '<div class="full">'+
+          '<button class="ap-btn" onclick="saveNewAP()">Guardar obligación</button> '+
+          '<button class="ap-btn secondary" onclick="closeAP()">Cancelar</button>'+
+        '</div>'+
+      '</div>';
+
+    const typeSelect=document.getElementById('apNewType');
+    const codeInput=document.getElementById('apCode');
+
+    typeSelect.onchange=()=>{
+      codeInput.value=AP_TYPES[typeSelect.value];
+    };
+
+    codeInput.value=AP_TYPES[typeSelect.value];
+  }
+
+
+  if(mode==='payment'){
+
+    const thirds=[
+      ...new Set(
+        apAccounts
+          .map(a=>String(a.third||'').trim())
+          .filter(Boolean)
+      )
+    ].sort((a,b)=>a.localeCompare(b,'es'));
+
+    apModalTitle.textContent='Registrar abono o pago';
+
+    apFormArea.innerHTML=
+      '<div class="ap-form">'+
+
+        '<label class="full">Tercero / proveedor'+
+          '<input id="apPayThird" list="apPayThirdList" autocomplete="off" placeholder="Escribe o selecciona el tercero">'+
+
+          '<datalist id="apPayThirdList">'+
+            thirds.map(x=>
+              '<option value="'+x.replace(/"/g,'&quot;')+'">'
+            ).join('')+
+          '</datalist>'+
+        '</label>'+
+
+        '<label class="full">Obligación pendiente'+
+          '<select id="apPayAccount">'+
+            '<option value="">Selecciona primero el tercero</option>'+
+          '</select>'+
+        '</label>'+
+
+        '<div class="full" id="apPayInfo">'+
+          '<p class="muted">Al seleccionar el tercero aparecerá automáticamente el saldo pendiente.</p>'+
+        '</div>'+
+
+        '<label>Fecha de pago'+
+          '<input id="apPayDate" type="date" value="'+new Date().toISOString().slice(0,10)+'">'+
+        '</label>'+
+
+        '<label>Valor a pagar / abonar'+
+          '<input id="apPayAmount" type="number" min="1" placeholder="Digite el abono">'+
+        '</label>'+
+
+        '<label>Forma de pago'+
+          '<select id="apPayMethod">'+
+            '<option>Efectivo</option>'+
+            '<option>Transferencia</option>'+
+            '<option>Nequi</option>'+
+            '<option>Daviplata</option>'+
+            '<option>Cheque</option>'+
+            '<option>Otro</option>'+
+          '</select>'+
+        '</label>'+
+
+        '<label>Referencia / comprobante'+
+          '<input id="apPayRef" placeholder="Opcional">'+
+        '</label>'+
+
+        '<div class="full">'+
+          '<button class="ap-btn" onclick="saveAPPayment()">Registrar pago / abono</button> '+
+          '<button class="ap-btn secondary" onclick="closeAP()">Cancelar</button>'+
+        '</div>'+
+
+      '</div>';
+
+    const thirdInput=document.getElementById('apPayThird');
+    const accountSelect=document.getElementById('apPayAccount');
+
+    thirdInput.addEventListener('input',filterAPAccountsByThird);
+    thirdInput.addEventListener('change',filterAPAccountsByThird);
+
+    accountSelect.addEventListener('change',updateAPPaymentInfo);
+  }
+
+}
+
+
+function filterAPAccountsByThird(){
 
   const input=document.getElementById('apPayThird');
   const select=document.getElementById('apPayAccount');
+  const info=document.getElementById('apPayInfo');
 
   if(!input || !select) return;
 
-  const name=String(input.value || '')
+  const name=String(input.value||'')
     .trim()
     .toLowerCase();
 
-  const rows=(window.apAccounts || []).filter(a=>{
-    const third=String(a.third || '')
+  const rows=apAccounts.filter(a=>{
+
+    const third=String(a.third||'')
       .trim()
       .toLowerCase();
 
-    const balance=Number(apBalance(a)) || 0;
-
-    return third===name && balance>0;
+    return third===name && apBalance(a)>0;
   });
 
-  if(rows.length){
-
-    select.innerHTML=
-      '<option value="">Selecciona una obligación</option>'+
-      rows.map(a=>
-        '<option value="'+a.id+'">'+
-          a.description+
-          ' · Saldo '+apMoney(apBalance(a))+
-        '</option>'
-      ).join('');
-
-  }else{
+  if(!rows.length){
 
     select.innerHTML=
       '<option value="">No hay obligaciones pendientes para este tercero</option>';
 
+    if(info){
+      info.innerHTML=
+        '<p class="muted">No se encontraron obligaciones pendientes para este tercero.</p>';
+    }
+
+    return;
   }
 
-  updateAPPaymentInfo();
+  select.innerHTML=
+    '<option value="">Selecciona una obligación</option>'+
+    rows.map(a=>
+      '<option value="'+a.id+'">'+
+        a.description+
+        ' · Saldo '+apMoney(apBalance(a))+
+      '</option>'
+    ).join('');
+
 }
 
-  function updateAPPaymentInfo(){
+
+function updateAPPaymentInfo(){
 
   const select=document.getElementById('apPayAccount');
   const info=document.getElementById('apPayInfo');
@@ -597,9 +702,9 @@ function openAPModal(mode){
 
   if(!select || !info) return;
 
-  const id=String(select.value || '');
+  const id=String(select.value||'');
 
-  const a=(window.apAccounts || []).find(x=>
+  const a=apAccounts.find(x=>
     String(x.id)===id
   );
 
@@ -616,14 +721,14 @@ function openAPModal(mode){
     return;
   }
 
-  const paid=(a.payments || []).reduce((s,p)=>{
-    return s+(Number(p.amount) || 0);
+  const paid=(a.payments||[]).reduce((s,p)=>{
+    return s+(Number(p.amount)||0);
   },0);
 
-  const balance=Number(apBalance(a)) || 0;
+  const balance=apBalance(a);
 
   if(thirdInput){
-    thirdInput.value=a.third || '';
+    thirdInput.value=a.third||'';
   }
 
   info.innerHTML=
@@ -638,6 +743,7 @@ function openAPModal(mode){
     amountInput.max=balance;
     amountInput.placeholder='Máximo '+apMoney(balance);
   }
+
 }
 function closeAP(){apModal.classList.remove('open')}
 
