@@ -724,7 +724,7 @@ function apGroupSummary(){
   const map={};
 
   apAccounts.forEach(a=>{
-    const key=a.third || 'SIN TERCERO';
+    const key=String(a.third || 'SIN TERCERO').trim() || 'SIN TERCERO';
 
     if(!map[key]){
       map[key]={
@@ -734,6 +734,53 @@ function apGroupSummary(){
         count:0
       };
     }
+
+    const caused=Number(a.amount)||0;
+
+    const paid=(a.payments||[]).reduce((s,p)=>{
+      return s+(Number(p.amount)||0);
+    },0);
+
+    map[key].caused+=caused;
+    map[key].paid+=paid;
+    map[key].balance+=caused-paid;
+    map[key].count++;
+  });
+
+  const rows=Object.entries(map)
+    .sort((a,b)=>b[1].balance-a[1].balance);
+
+  area.innerHTML=rows.length
+    ? '<table class="ap-table">'+
+        '<thead>'+
+          '<tr>'+
+            '<th>TERCERO</th>'+
+            '<th>CUENTAS</th>'+
+            '<th class="right">CAUSADO</th>'+
+            '<th class="right">PAGADO</th>'+
+            '<th class="right">SALDO</th>'+
+          '</tr>'+
+        '</thead>'+
+        '<tbody>'+
+          rows.map(([name,r])=>
+            '<tr>'+
+              '<td>'+name+'</td>'+
+              '<td>'+r.count+'</td>'+
+              '<td class="right">'+apMoney(r.caused)+'</td>'+
+              '<td class="right">'+apMoney(r.paid)+'</td>'+
+              '<td class="right">'+apMoney(r.balance)+'</td>'+
+            '</tr>'
+          ).join('')+
+        '</tbody>'+
+      '</table>'+
+      '<div style="margin-top:18px">'+
+        '<button class="ap-btn secondary" onclick="closeAP()">Cerrar</button>'+
+      '</div>'
+    : '<p class="muted">No hay obligaciones registradas.</p>'+
+      '<div style="margin-top:18px">'+
+        '<button class="ap-btn secondary" onclick="closeAP()">Cerrar</button>'+
+      '</div>';
+}
 
   function exportAP(){
   const head='TERCERO,CONCEPTO,TIPO,FECHA,CAUSADO,PAGADO,SALDO,ESTADO\n';
