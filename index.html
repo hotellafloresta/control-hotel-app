@@ -544,7 +544,8 @@ function openAPModal(mode){
  apPayThird.addEventListener('input',filterAPAccountsByThird);
  apPayThird.addEventListener('change',filterAPAccountsByThird);
  apPayAccount.onchange=updateAPPaymentInfo;
- 
+
+  filterAPAccountsByThird();
   function filterAPAccountsByThird(){
 
   const input=document.getElementById('apPayThird');
