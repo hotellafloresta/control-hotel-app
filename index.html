@@ -544,21 +544,99 @@ function openAPModal(mode){
  apPayThird.addEventListener('input',filterAPAccountsByThird);
  apPayThird.addEventListener('change',filterAPAccountsByThird);
  apPayAccount.onchange=updateAPPaymentInfo;
- }
- function filterAPAccountsByThird(){
- const name=(apPayThird?.value||'').trim().toLowerCase();
- const rows=apAccounts.filter(a=>apBalance(a)>0 && String(a.third||'').trim().toLowerCase()===name);
- apPayAccount.innerHTML=rows.length ? rows.map(a=>'<option value="'+a.id+'">'+a.description+' · Saldo '+apMoney(apBalance(a))+'</option>').join('') : '<option value="">No hay obligaciones pendientes para este tercero</option>';
- updateAPPaymentInfo();
+ 
+  function filterAPAccountsByThird(){
+
+  const input=document.getElementById('apPayThird');
+  const select=document.getElementById('apPayAccount');
+
+  if(!input || !select) return;
+
+  const name=String(input.value || '')
+    .trim()
+    .toLowerCase();
+
+  const rows=(window.apAccounts || []).filter(a=>{
+    const third=String(a.third || '')
+      .trim()
+      .toLowerCase();
+
+    const balance=Number(apBalance(a)) || 0;
+
+    return third===name && balance>0;
+  });
+
+  if(rows.length){
+
+    select.innerHTML=
+      '<option value="">Selecciona una obligación</option>'+
+      rows.map(a=>
+        '<option value="'+a.id+'">'+
+          a.description+
+          ' · Saldo '+apMoney(apBalance(a))+
+        '</option>'
+      ).join('');
+
+  }else{
+
+    select.innerHTML=
+      '<option value="">No hay obligaciones pendientes para este tercero</option>';
+
+  }
+
+  updateAPPaymentInfo();
 }
-}
- function updateAPPaymentInfo(){
- const a=apAccounts.find(x=>x.id===+apPayAccount.value);
- if(!a){apPayInfo.innerHTML='<p class="muted">Selecciona un tercero con obligaciones pendientes para ver el saldo.</p>';if(apPayAmount){apPayAmount.value='';apPayAmount.max='';}return}
- const paid=(a.payments||[]).reduce((s,p)=>s+(+p.amount||0),0),balance=apBalance(a);
- if(apPayThird) apPayThird.value=a.third;
- apPayInfo.innerHTML='<div class="ap-summary"><div><small>TERCERO</small><b>'+a.third+'</b></div><div><small>VALOR CAUSADO</small><b>'+apMoney(a.amount)+'</b></div><div><small>YA PAGADO</small><b>'+apMoney(paid)+'</b></div><div><small>SALDO PENDIENTE</small><b style="color:#d97706">'+apMoney(balance)+'</b></div></div>';
- apPayAmount.max=balance;apPayAmount.placeholder='Máximo '+apMoney(balance);
+
+  function updateAPPaymentInfo(){
+
+  const select=document.getElementById('apPayAccount');
+  const info=document.getElementById('apPayInfo');
+  const amountInput=document.getElementById('apPayAmount');
+  const thirdInput=document.getElementById('apPayThird');
+
+  if(!select || !info) return;
+
+  const id=String(select.value || '');
+
+  const a=(window.apAccounts || []).find(x=>
+    String(x.id)===id
+  );
+
+  if(!a){
+
+    info.innerHTML=
+      '<p class="muted">Selecciona una obligación pendiente para ver el saldo.</p>';
+
+    if(amountInput){
+      amountInput.value='';
+      amountInput.max='';
+    }
+
+    return;
+  }
+
+  const paid=(a.payments || []).reduce((s,p)=>{
+    return s+(Number(p.amount) || 0);
+  },0);
+
+  const balance=Number(apBalance(a)) || 0;
+
+  if(thirdInput){
+    thirdInput.value=a.third || '';
+  }
+
+  info.innerHTML=
+    '<div class="ap-summary">'+
+      '<div><small>TERCERO</small><b>'+a.third+'</b></div>'+
+      '<div><small>VALOR CAUSADO</small><b>'+apMoney(a.amount)+'</b></div>'+
+      '<div><small>YA PAGADO</small><b>'+apMoney(paid)+'</b></div>'+
+      '<div><small>SALDO PENDIENTE</small><b style="color:#d97706">'+apMoney(balance)+'</b></div>'+
+    '</div>';
+
+  if(amountInput){
+    amountInput.max=balance;
+    amountInput.placeholder='Máximo '+apMoney(balance);
+  }
 }
 function closeAP(){apModal.classList.remove('open')}
 
