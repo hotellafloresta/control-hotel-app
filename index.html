@@ -702,49 +702,7 @@ function apGroupSummary(){
       '</div>';
 }
 
-    map[k].caused+=Number(a.amount)||0;
-
-    const paid=(a.payments||[]).reduce((s,p)=>{
-      return s+(Number(p.amount)||0);
-    },0);
-
-    map[k].paid+=paid;
-    map[k].balance+=apBalance(a);
-    map[k].count++;
-  });
-
-  const rows=Object.entries(map)
-    .sort((a,b)=>b[1].balance-a[1].balance);
-
-  apFormArea.innerHTML=rows.length
-    ? `
-      <table class="ap-table">
-        <thead>
-          <tr>
-            <th>TERCERO</th>
-            <th>CUENTAS</th>
-            <th class="right">CAUSADO</th>
-            <th class="right">PAGADO</th>
-            <th class="right">SALDO</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${rows.map(([name,r])=>`
-            <tr>
-              <td>${name}</td>
-              <td>${r.count}</td>
-              <td class="right">${apMoney(r.caused)}</td>
-              <td class="right">${apMoney(r.paid)}</td>
-              <td class="right">${apMoney(r.balance)}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    `
-    : '<p class="muted">No hay obligaciones registradas.</p>';
-}
-
-function exportAP(){
+  function exportAP(){
   const head='TERCERO,CONCEPTO,TIPO,FECHA,CAUSADO,PAGADO,SALDO,ESTADO\n';
 
   const csv=head+apAccounts.map(a=>{
