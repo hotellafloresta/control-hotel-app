@@ -551,7 +551,8 @@ function openAPModal(mode){
  apPayAccount.innerHTML=rows.length ? rows.map(a=>'<option value="'+a.id+'">'+a.description+' · Saldo '+apMoney(apBalance(a))+'</option>').join('') : '<option value="">No hay obligaciones pendientes para este tercero</option>';
  updateAPPaymentInfo();
 }
-function updateAPPaymentInfo(){
+}
+ function updateAPPaymentInfo(){
  const a=apAccounts.find(x=>x.id===+apPayAccount.value);
  if(!a){apPayInfo.innerHTML='<p class="muted">Selecciona un tercero con obligaciones pendientes para ver el saldo.</p>';if(apPayAmount){apPayAmount.value='';apPayAmount.max='';}return}
  const paid=(a.payments||[]).reduce((s,p)=>s+(+p.amount||0),0),balance=apBalance(a);
@@ -689,7 +690,7 @@ function apGroupSummary(){
 }
 
 function exportAP(){
-  const head='TERCERO,CONCEPTO,TIPO,FECHA,CAUSADO,PAGADO,SALDO,ESTADO\\n';
+  const head='TERCERO,CONCEPTO,TIPO,FECHA,CAUSADO,PAGADO,SALDO,ESTADO\n';
 
   const csv=head+apAccounts.map(a=>{
     const paid=(a.payments||[]).reduce((s,p)=>{
