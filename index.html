@@ -578,14 +578,54 @@ function saveAPPayment(){
 }
 
 function showAPHistory(id){
- const a=apAccounts.find(x=>x.id===id);if(!a)return;
- apModal.classList.add('open');apModalTitle.textContent='Cuenta por pagar · '+a.third;
- const pays=a.payments||[],paid=pays.reduce((s,p)=>s+p.amount,0);
- apFormArea.innerHTML='<p><b>'+a.description+'</b><br><span class="muted">'+a.type+' · '+a.paymentCode+'</span></p>'+
- '<div class="ap-summary"><div><small>CAUSADO</small><b>'+apMoney(a.amount)+'</b></div><div><small>PAGADO</small><b>'+apMoney(paid)+'</b></div><div><small>SALDO</small><b>'+apMoney(apBalance(a))+'</b></div></div>'+
- '<h3 style="margin-top:20px">Historial de pagos</h3>'+
- (pays.length?'<table class="ap-table"><thead><tr><th>FECHA</th><th>FORMA</th><th>REFERENCIA</th><th class="right">VALOR</th></tr></thead><tbody>'+pays.map(p=>'<tr><td>'+p.date+'</td><td>'+p.method+'</td><td>'+p.reference+'</td><td class="right">'+apMoney(p.amount)+'</td></tr>').join('')+'</tbody></table>':'<p class="muted">Todavía no registra pagos.</p>')+
- '<div style="margin-top:18px"><button class="ap-btn secondary" onclick="closeAP()">Cerrar</button></div>';
+  const a=apAccounts.find(x=>x.id===id);
+  if(!a)return;
+
+  apModal.classList.add('open');
+  apModalTitle.textContent='Cuenta por pagar · '+a.third;
+
+  const pays=(a.payments||[]);
+  const paid=pays.reduce((s,p)=>s+(+p.amount||0),0);
+
+  apFormArea.innerHTML=
+    '<p><b>'+a.description+'</b><br>'+
+    '<span class="muted">'+a.type+' · '+a.paymentCode+'</span></p>'+
+
+    '<div class="ap-summary">'+
+      '<div><small>CAUSADO</small><b>'+apMoney(a.amount)+'</b></div>'+
+      '<div><small>PAGADO</small><b>'+apMoney(paid)+'</b></div>'+
+      '<div><small>SALDO</small><b>'+apMoney(apBalance(a))+'</b></div>'+
+    '</div>'+
+
+    '<h3 style="margin-top:20px">Historial de pagos</h3>'+
+
+    (pays.length
+      ? '<table class="ap-table">'+
+          '<thead>'+
+            '<tr>'+
+              '<th>FECHA</th>'+
+              '<th>FORMA</th>'+
+              '<th>REFERENCIA</th>'+
+              '<th class="right">VALOR</th>'+
+            '</tr>'+
+          '</thead>'+
+          '<tbody>'+
+            pays.map(p=>
+              '<tr>'+
+                '<td>'+p.date+'</td>'+
+                '<td>'+p.method+'</td>'+
+                '<td>'+p.reference+'</td>'+
+                '<td class="right">'+apMoney(p.amount)+'</td>'+
+              '</tr>'
+            ).join('')+
+          '</tbody>'+
+        '</table>'
+      : '<p class="muted">No hay pagos registrados.</p>'
+    )+
+
+    '<div style="margin-top:18px">'+
+      '<button class="ap-btn secondary" onclick="closeAP()">Cerrar</button>'+
+    '</div>';
 }
 
 function apGroupSummary(){
