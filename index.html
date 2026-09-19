@@ -174,6 +174,199 @@
  </div>
 </div>
 
+
+
+
+<!-- ==========================================================
+     CONTROL HOTEL · REGISTRAR MOVIMIENTOS · V1 INTEGRADO
+     Alojamiento conectado a POST /api/movimientos
+     ========================================================== -->
+<style>
+.ch-mov-wrap{display:none;margin-top:24px}
+.ch-mov-wrap.open{display:block}
+.ch-mov-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:16px}
+.ch-mov-head h2{margin:0;font-size:22px}
+.ch-mov-head p{margin:5px 0 0;color:#718093;font-size:13px}
+.ch-mov-back{border:1px solid #dfe6ec;background:#fff;border-radius:10px;padding:9px 13px;font-weight:800;cursor:pointer}
+.ch-card-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.ch-movement-card{background:#fff;border:1px solid #e5ebf0;border-radius:15px;padding:17px;min-height:150px;box-shadow:0 4px 15px rgba(26,52,70,.05);cursor:pointer;transition:.18s}
+.ch-movement-card:hover{transform:translateY(-2px);border-color:#b9d5e8;box-shadow:0 8px 22px rgba(26,52,70,.09)}
+.ch-movement-card.disabled{cursor:default;opacity:.72}
+.ch-movement-card.disabled:hover{transform:none;border-color:#e5ebf0;box-shadow:0 4px 15px rgba(26,52,70,.05)}
+.ch-pill{display:inline-flex;padding:5px 8px;border-radius:999px;background:#eef7fb;color:#26799d;font-size:10px;font-weight:900;letter-spacing:.04em}
+.ch-movement-card h3{margin:12px 0 7px;font-size:16px}.ch-movement-card p{margin:0;color:#718093;font-size:12px;line-height:1.45}
+.ch-form{display:none;background:#fff;border:1px solid #e2e9ef;border-radius:15px;padding:20px;box-shadow:0 6px 24px rgba(26,52,70,.06)}
+.ch-form.open{display:block}.ch-form-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}.ch-form-top h3{margin:0;font-size:19px}.ch-form-top span{font-size:11px;font-weight:900;color:#718093}
+.ch-form-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px}.ch-field{min-width:0}.ch-field.full{grid-column:1/-1}.ch-field label,.ch-pay-title{display:block;font-size:10px;font-weight:900;color:#526674;margin-bottom:6px;letter-spacing:.02em}.ch-field input,.ch-field select,.ch-field textarea{width:100%;box-sizing:border-box;border:1px solid #d9e2e9;border-radius:9px;padding:10px 11px;background:#fff;font:inherit;font-size:13px;outline:none}.ch-field input:focus,.ch-field select:focus,.ch-field textarea:focus{border-color:#7bb9d7;box-shadow:0 0 0 3px rgba(0,159,227,.08)}
+.ch-field textarea{min-height:84px;resize:vertical}.ch-money{position:relative}.ch-money:before{content:'$';position:absolute;left:11px;top:10px;font-weight:900;color:#718093}.ch-money input{padding-left:25px;font-weight:850;font-size:15px}
+.ch-total{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;padding:13px 15px;background:#f3f8fb;border:1px solid #dcebf3;border-radius:10px;font-weight:900}.ch-total b{font-size:19px}
+.ch-pay-title{grid-column:1/-1;margin:2px 0 -3px}.ch-msg{grid-column:1/-1;min-height:18px;font-size:12px;font-weight:750}.ch-msg.ok{color:#18794e}.ch-msg.err{color:#b42318}.ch-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:16px}.ch-btn{border:0;border-radius:9px;padding:10px 15px;font-weight:900;cursor:pointer}.ch-btn.secondary{background:#eef2f5;color:#526674}.ch-btn.primary{background:#009fe3;color:#fff}.ch-btn:disabled{opacity:.55;cursor:not-allowed}
+.ch-airbnb{grid-column:1/-1;display:none;padding:13px;background:#fff8ed;border:1px solid #f1dfc2;border-radius:10px}.ch-airbnb.open{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.ch-net{display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:900}.ch-net b{font-size:16px}
+@media(max-width:1000px){.ch-card-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ch-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.ch-airbnb.open{grid-template-columns:1fr}}
+@media(max-width:620px){.ch-card-grid,.ch-form-grid{grid-template-columns:1fr}.ch-field.full,.ch-total,.ch-pay-title,.ch-msg{grid-column:1}.ch-mov-head{flex-direction:column}}
+</style>
+
+<section id="registrarMovimientos" class="ch-mov-wrap">
+  <div class="ch-mov-head">
+    <div><h2>➕ Registrar movimientos</h2><p>Registra las operaciones diarias del hotel directamente en el sistema.</p></div>
+    <button type="button" class="ch-mov-back" id="chBackDashboard">← Volver al dashboard</button>
+  </div>
+
+  <div id="chMovementCards" class="ch-card-grid">
+    <div class="ch-movement-card" data-form="alojamiento"><span class="ch-pill">OPERACIÓN</span><h3>🛏️ Alojamiento</h3><p>Registra habitación, huéspedes, noches, valor, pagos, anticipos y CxC.</p></div>
+    <div class="ch-movement-card disabled"><span class="ch-pill">RESERVAS</span><h3>📅 Reserva / Anticipo</h3><p>Formulario aprobado pendiente de conexión.</p></div>
+    <div class="ch-movement-card disabled"><span class="ch-pill">TESORERÍA</span><h3>💵 Recaudo</h3><p>Formulario aprobado pendiente de conexión.</p></div>
+    <div class="ch-movement-card disabled"><span class="ch-pill">TESORERÍA</span><h3>💸 Salida de caja</h3><p>Formulario aprobado pendiente de conexión.</p></div>
+    <div class="ch-movement-card disabled"><span class="ch-pill">CUENTAS</span><h3>💰 Préstamo</h3><p>Formulario aprobado pendiente de conexión.</p></div>
+    <div class="ch-movement-card disabled"><span class="ch-pill">INGRESOS</span><h3>💵 Otros ingresos</h3><p>Formulario aprobado pendiente de conexión.</p></div>
+    <div class="ch-movement-card disabled"><span class="ch-pill">CUENTAS</span><h3>📋 Cuenta por cobrar</h3><p>Formulario aprobado pendiente de conexión.</p></div>
+    <div class="ch-movement-card disabled"><span class="ch-pill">CONTABLE</span><h3>📑 Movimiento contable</h3><p>Formulario aprobado pendiente de conexión.</p></div>
+  </div>
+
+  <div id="chAlojamientoForm" class="ch-form" aria-hidden="true">
+    <div class="ch-form-top"><h3>🛏️ Registrar alojamiento</h3><span>F2 — GUARDAR</span></div>
+    <div class="ch-form-grid">
+      <div class="ch-field"><label>FECHA DE OPERACIÓN</label><input id="chAFecha" type="date"></div>
+      <div class="ch-field"><label>HABITACIÓN</label><input id="chAHabitacion" list="chRoomsList" placeholder="Ej. 202 A"><datalist id="chRoomsList"></datalist></div>
+      <div class="ch-field"><label>TERCERO</label><input id="chATercero" list="chThirdList" value="CONSUMIDOR FINAL" autocomplete="off"><datalist id="chThirdList"><option value="CONSUMIDOR FINAL"></option><option value="AIRBNB"></option></datalist></div>
+      <div class="ch-field"><label>PERSONAS</label><input id="chAPersonas" type="number" min="1" step="1" value="1"></div>
+      <div class="ch-field"><label>CANTIDAD DE NOCHES</label><input id="chANoches" type="number" min="1" step="1" value="1"></div>
+      <div class="ch-field"><label>VALOR POR NOCHE</label><div class="ch-money"><input id="chAValor" type="number" min="0" step="1000" value="0"></div></div>
+      <div class="ch-total"><span>TOTAL ALOJAMIENTO</span><b id="chATotal">$ 0</b></div>
+
+      <div id="chAirbnbBox" class="ch-airbnb">
+        <div class="ch-field"><label>598 · COMISIÓN CHANNEL MANAGER</label><div class="ch-money"><input id="chAComision" type="number" min="0" step="1000" value="0"></div></div>
+        <div class="ch-net"><span>NETO A COBRAR A AIRBNB</span><b id="chANeto">$ 0</b></div>
+      </div>
+
+      <div class="ch-pay-title">PAGOS Y ANTICIPO A APLICAR</div>
+      <div class="ch-field"><label>EFECTIVO</label><div class="ch-money"><input id="chPEfectivo" type="number" min="0" step="1000" value="0"></div></div>
+      <div class="ch-field"><label>BANCOLOMBIA</label><div class="ch-money"><input id="chPBancolombia" type="number" min="0" step="1000" value="0"></div></div>
+      <div class="ch-field"><label>NEQUI</label><div class="ch-money"><input id="chPNequi" type="number" min="0" step="1000" value="0"></div></div>
+      <div class="ch-field"><label>BOLD</label><div class="ch-money"><input id="chPBold" type="number" min="0" step="1000" value="0"></div></div>
+      <div class="ch-field"><label>ANTICIPO A APLICAR</label><div class="ch-money"><input id="chAAnticipo" type="number" min="0" step="1000" value="0"></div></div>
+      <div class="ch-field"><label>CUENTA POR COBRAR</label><div class="ch-money"><input id="chACxc" type="number" min="0" step="1000" value="0"></div></div>
+      <div class="ch-total"><span>TOTAL RECIBIDO / APLICADO</span><b id="chAPagado">$ 0</b></div>
+      <div id="chAMsg" class="ch-msg"></div>
+      <div class="ch-field full"><label>OBSERVACIONES</label><textarea id="chAObs" placeholder="Opcional"></textarea></div>
+    </div>
+    <div class="ch-actions"><button type="button" class="ch-btn secondary" id="chAlojBack">← Volver</button><button type="button" class="ch-btn primary" id="chSaveAloj">F2 — GUARDAR</button></div>
+  </div>
+</section>
+
+<script>
+(function(){
+  'use strict';
+  const API_BASE=(window.CONTROL_HOTEL_CONFIG&&window.CONTROL_HOTEL_CONFIG.API_URL)||'https://control-hotel-api-production.up.railway.app';
+  const rooms=['202 A','202 B','203 A','203 B','204','205','206','207','208','209','210','211','212','213','214','215','216','217','218'];
+  const $=id=>document.getElementById(id);
+  const money=v=>'$ '+Math.round(Number(v)||0).toLocaleString('es-CO');
+  const today=()=>new Date().toISOString().slice(0,10);
+  const val=id=>Math.max(0,Number($(id)?.value||0));
+
+  function showMovement(){
+    const dashboard=document.getElementById('operacion');
+    const section=$('registrarMovimientos');
+    if(section){section.classList.add('open');section.scrollIntoView({behavior:'smooth',block:'start'});}
+    if(dashboard) dashboard.style.display='none';
+  }
+  function hideMovement(){
+    const section=$('registrarMovimientos');
+    const dashboard=document.getElementById('operacion');
+    if(section){section.classList.remove('open');}
+    if(dashboard) dashboard.style.display='block';
+    closeAlojamiento();
+  }
+  function openAlojamiento(){
+    showMovement();
+    $('chMovementCards').style.display='none';
+    $('chAlojamientoForm').classList.add('open');
+    $('chAlojamientoForm').setAttribute('aria-hidden','false');
+    if(!$('chAFecha').value) $('chAFecha').value=today();
+    recalc();
+    setTimeout(()=>$('chAHabitacion').focus(),80);
+  }
+  function closeAlojamiento(){
+    $('chMovementCards').style.display='grid';
+    $('chAlojamientoForm').classList.remove('open');
+    $('chAlojamientoForm').setAttribute('aria-hidden','true');
+  }
+  function recalc(){
+    const total=val('chANoches')*val('chAValor');
+    $('chATotal').textContent=money(total);
+    const air=String($('chATercero').value||'').trim().toUpperCase()==='AIRBNB';
+    $('chAirbnbBox').classList.toggle('open',air);
+    const commission=Math.min(total,val('chAComision'));
+    $('chANeto').textContent=money(total-commission);
+    const base=air?total-commission:total;
+    const others=val('chPBancolombia')+val('chPNequi')+val('chPBold')+val('chAAnticipo')+val('chACxc');
+    const cash=Math.max(0,base-others);
+    $('chPEfectivo').value=Math.round(cash);
+    const paid=val('chPEfectivo')+val('chPBancolombia')+val('chPNequi')+val('chPBold')+val('chAAnticipo')+val('chACxc');
+    $('chAPagado').textContent=money(paid);
+    const msg=$('chAMsg');
+    msg.className='ch-msg';
+    if(paid>base){msg.classList.add('err');msg.textContent='Los pagos, anticipo y CxC superan el valor neto de la operación.';}
+    else if(Math.abs(paid-base)<1){msg.classList.add('ok');msg.textContent='✓ Operación cuadrada.';}
+    else{msg.textContent='Pendiente por distribuir: '+money(base-paid);}
+  }
+  async function saveAlojamiento(){
+    const btn=$('chSaveAloj'); if(btn.disabled)return;
+    const fecha=$('chAFecha').value;
+    const habitacion=$('chAHabitacion').value.trim();
+    const tercero=$('chATercero').value.trim();
+    const personas=Math.floor(val('chAPersonas'));
+    const noches=Math.floor(val('chANoches'));
+    const valorNoche=val('chAValor');
+    const total=noches*valorNoche;
+    const air=tercero.toUpperCase()==='AIRBNB';
+    const commission=Math.min(total,val('chAComision'));
+    const base=air?total-commission:total;
+    const pagos={efectivo:val('chPEfectivo'),bancolombia:val('chPBancolombia'),nequi:val('chPNequi'),bold:val('chPBold'),anticipo:val('chAAnticipo'),cxc:val('chACxc')};
+    const paid=Object.values(pagos).reduce((a,b)=>a+b,0);
+    const msg=$('chAMsg');
+    msg.className='ch-msg';
+    if(!fecha||!habitacion||!tercero){msg.classList.add('err');msg.textContent='Completa fecha, habitación y tercero.';return;}
+    if(personas<1||noches<1||total<=0){msg.classList.add('err');msg.textContent='Personas, noches y valor por noche deben ser mayores que cero.';return;}
+    if(paid>base+0.01){msg.classList.add('err');msg.textContent='Los pagos no pueden superar '+money(base)+'.';recalc();return;}
+    if(Math.abs(paid-base)>0.01){msg.classList.add('err');msg.textContent='La operación debe quedar totalmente distribuida. Falta '+money(base-paid)+'.';return;}
+    if(pagos.cxc>0 && !tercero){msg.classList.add('err');msg.textContent='La CxC requiere tercero.';return;}
+    const payload={tipo:'ALOJAMIENTO',fecha,tercero,habitacion,personas,noches,valor_noche:valorNoche,valor:total,comision:commission,efectivo:pagos.efectivo,bancolombia:pagos.bancolombia,nequi:pagos.nequi,bold:pagos.bold,anticipo:pagos.anticipo,cxc:pagos.cxc,descripcion:'Alojamiento '+habitacion,observaciones:$('chAObs').value.trim()};
+    btn.disabled=true;btn.textContent='Guardando…';msg.textContent='Guardando movimiento…';
+    try{
+      const response=await fetch(API_BASE+'/api/movimientos',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok) throw new Error(data.error||'No fue posible guardar el movimiento.');
+      msg.className='ch-msg ok';msg.textContent='✓ Alojamiento guardado correctamente en Supabase.';
+      alert('Alojamiento guardado correctamente.');
+      resetForm();
+      closeAlojamiento();
+      // Si existe el motor integrado, intenta refrescar el período actual.
+      const period=String($('dashboardPeriod')?.value||fecha.slice(0,7));
+      if(typeof window.syncIntegratedPeriod==='function') window.syncIntegratedPeriod(period);
+    }catch(error){
+      msg.className='ch-msg err';msg.textContent='✕ '+error.message;
+    }finally{btn.disabled=false;btn.textContent='F2 — GUARDAR';}
+  }
+  function resetForm(){
+    $('chAFecha').value=today();$('chAHabitacion').value='';$('chATercero').value='CONSUMIDOR FINAL';$('chAPersonas').value=1;$('chANoches').value=1;$('chAValor').value=0;$('chAComision').value=0;$('chPBancolombia').value=0;$('chPNequi').value=0;$('chPBold').value=0;$('chAAnticipo').value=0;$('chACxc').value=0;$('chAObs').value='';recalc();
+  }
+  rooms.forEach(r=>{const o=document.createElement('option');o.value=r;$('chRoomsList').appendChild(o);});
+  ['chAFecha','chAHabitacion','chATercero','chAPersonas','chANoches','chAValor','chAComision','chPBancolombia','chPNequi','chPBold','chAAnticipo','chACxc'].forEach(id=>$(id)?.addEventListener('input',recalc));
+  $('chATercero').addEventListener('change',recalc);
+  $('chSaveAloj').addEventListener('click',saveAlojamiento);
+  $('chAlojBack').addEventListener('click',closeAlojamiento);
+  $('chBackDashboard').addEventListener('click',hideMovement);
+  $('chMovementCards').addEventListener('click',e=>{const card=e.target.closest('.ch-movement-card');if(card?.dataset.form==='alojamiento')openAlojamiento();});
+  document.addEventListener('keydown',e=>{if(e.key==='F2'){e.preventDefault();if($('chAlojamientoForm').classList.contains('open'))saveAlojamiento();}});
+
+  // El menú lateral existente no tenía navegación para Registrar movimientos.
+  document.querySelectorAll('.side .nav').forEach(nav=>{
+    if(nav.textContent.includes('Registrar movimientos')) nav.addEventListener('click',showMovement);
+  });
+})();
+</script>
+
 </main></div>
 <script>
 const PG={
