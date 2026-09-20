@@ -1286,43 +1286,13 @@ q("aTercero")?.addEventListener("change",recalc);
 q("backCards")?.addEventListener("click",()=>{q("alojamientoForm").style.display="none";q("movementCards").style.display="grid"});
 
 window.currentMovement=null;
-let controlHotelRooms = [];
-let controlHotelRoomsLoaded = false;
-async function cargarHabitacionesValidas(){
-  try{
-    const r=await fetch("https://control-hotel-api-production.up.railway.app/api/habitaciones");
-    const d=await r.json();
-    if(!r.ok) throw new Error(d.error||"No fue posible cargar las habitaciones");
-    controlHotelRooms=Array.isArray(d.habitaciones)?d.habitaciones:[];
-    controlHotelRoomsLoaded=true;
-    const dl=q("roomsList");
-    if(dl){
-      dl.innerHTML=controlHotelRooms.map(h=>`<option value="${String(h.numero).replace(/"/g,"&quot;")}">${h.nombre?String(h.nombre).replace(/"/g,"&quot;"):""}</option>`).join("");
-    }
-    return controlHotelRooms;
-  }catch(err){
-    controlHotelRoomsLoaded=false;
-    console.error("No se pudieron cargar las habitaciones",err);
-    const msg=q("aMsg");
-    if(msg){msg.textContent="No se pudieron cargar las habitaciones disponibles.";msg.style.color="#d94b4b";}
-    return [];
-  }
-}
-function habitacionValida(numero){
-  const n=String(numero||"").trim().toLowerCase();
-  return controlHotelRooms.find(h=>String(h.numero||"").trim().toLowerCase()===n)||null;
-}
-
-async function openMovement(type){
+function openMovement(type){
   try{
     if(type==="alojamiento"){
       q("movementCards").style.display="none";
       q("genericMovementForm").style.display="none";
       q("reservaForm").style.display="none";
       q("alojamientoForm").style.display="block";
-      const fecha=q("aFecha");
-      if(fecha && !fecha.value) fecha.value=new Date().toISOString().slice(0,10);
-      await cargarHabitacionesValidas();
       q("aHabitacion")?.focus();
       recalc();
       return;
@@ -1482,7 +1452,16 @@ function validateGeneric(type){
 }
 
 q("gBack").onclick=()=>{q("genericMovementForm").style.display="none";q("movementCards").style.display="grid"};
-
+q("gSave").onclick=()=>{
+ validateGeneric(currentMovement);
+ const msg=q("gMsg");
+ if(msg.style.color!=="rgb(21, 148, 106)"){return}
+ const d=q("gFecha");if(d)localStorage.setItem("ch_last_date",d.value);
+ msg.textContent="Formulario validado. Próximo paso: conectar este movimiento con Supabase.";
+};
+document.addEventListener("keydown",e=>{
+ if(e.key==="F2" && q("genericMovementForm").style.display!=="none"){e.preventDefault();q("gSave").click()}
+});
 </script>
 
 <script>
@@ -1764,6 +1743,9 @@ document.querySelectorAll(".nav").forEach(n=>{
     $('reservaForm').style.display='none';
     $('movementCards').style.display='grid';
   });
+  $('saveReserva')?.addEventListener('click',()=>{
+    if(typeof guardarReserva==='function') guardarReserva();
+  });
 })();
 </script>
 
@@ -1843,6 +1825,17 @@ document.querySelectorAll(".nav").forEach(n=>{
     $('movementCards').style.display='grid';
   });
 
+  $('saveRecaudo')?.addEventListener('click',()=>{
+    const tercero=sel?.value==='__NUEVO_TERCERO__'?(inp?.value||'').trim():(sel?.value||'').trim();
+    const valor=Number($('rec-valor')?.value||0);
+    const pendiente=Number($('rec-cxc-pendiente')?.dataset?.value||0);
+    const pagos=['rec-efectivo','rec-bancolombia','rec-nequi','rec-bold'].reduce((s,id)=>s+Number($(id)?.value||0),0);
+    if(!tercero)return alert('Selecciona o crea un tercero.');
+    if(valor<=0)return alert('Ingresa el valor a recaudar.');
+    if(valor>pendiente)return alert('El recaudo no puede superar la CxC pendiente.');
+    if(pagos!==valor)return alert('La suma de los medios de pago debe ser igual al valor a recaudar.');
+    alert('Recaudo validado. Próximo paso: conectar el guardado con Supabase.');
+  });
 })();
 </script>
 
@@ -1931,6 +1924,21 @@ document.querySelectorAll(".nav").forEach(n=>{
     $('movementCards').style.display='grid';
   });
 
+  $('saveSalida')?.addEventListener('click',()=>{
+    const tercero=sel?.value==='__NUEVO_TERCERO__'
+      ?(inp?.value||'').trim():(sel?.value||'').trim();
+    const concepto=($('sal-concepto')?.value||'').trim();
+    const valor=Math.max(0,Number($('sal-valor')?.value)||0);
+
+    if(!tercero) return alert('Selecciona o crea un tercero.');
+    if(!concepto) return alert('Ingresa el concepto.');
+    if(valor<=0) return alert('Ingresa un valor mayor que cero.');
+    if(sumaMedios()!==valor)
+      return alert('La suma de Efectivo + Bancolombia + Nequi + Bold debe ser exactamente igual al valor de la salida.');
+
+    alert('Salida de caja validada. Próximo paso: conectar el guardado con Supabase.');
+  });
+
   actualizar();
 })();
 </script>
@@ -1998,82 +2006,112 @@ document.querySelectorAll(".nav").forEach(n=>{
 </script>
 
 
-
-
-
-<script id="v40-validaciones-y-f2">
+<script id="v39-f2-desde-medios-pago">
 (function(){
-  const $=id=>document.getElementById(id);
-  const saveButtons={
-    alojamiento:"saveAloj",
-    recaudo:"saveRecaudo",
-    salida:"saveSalida",
-    reserva:"saveReserva",
-    generic:"gSave"
-  };
-  function msg(text,ok=false){
-    const el=$("aMsg");
-    if(el){el.textContent=text;el.style.color=ok?"#15946a":"#d94b4b";}
+  function visible(el){
+    if(!el) return false;
+    const s=getComputedStyle(el);
+    return s.display!=="none" && s.visibility!=="hidden" && el.offsetParent!==null;
   }
-  function validarAlojamiento(){
-    const fecha=$("aFecha")?.value||"";
-    const habitacion=$("aHabitacion")?.value.trim()||"";
-    const tercero=(window.getTerceroValue?window.getTerceroValue("aTercero"):$("aTercero")?.value||"").trim();
-    const personas=Number($("aPersonas")?.value||0);
-    const noches=Number($("aNoches")?.value||0);
-    const valor=Number($("aValor")?.value||0);
-    const total=Math.max(0,noches*valor);
-    const comision=Math.max(0,Number($("aComision")?.value||0));
-    const neto=$("aTercero")?.value==="AIRBNB"?Math.max(0,total-comision):total;
-    const pagos=["pEfectivo","pBancolombia","pNequi","pBold","aAnticipo","aCxc"].reduce((s,id)=>s+Math.max(0,Number($(id)?.value||0)),0);
 
-    if(!fecha){msg("Ingresa la fecha de operación.");$("aFecha")?.focus();return false;}
-    if(!habitacion){msg("Ingresa la habitación.");$("aHabitacion")?.focus();return false;}
-    if(!controlHotelRoomsLoaded){msg("No se pudieron cargar las habitaciones. Espera un momento y vuelve a intentarlo.");$("aHabitacion")?.focus();return false;}
-    const room=habitacionValida(habitacion);
-    if(!room){msg(`La habitación "${habitacion}" no existe. Selecciona una habitación válida de la lista.`);$("aHabitacion")?.focus();return false;}
-    if(!tercero){msg("Selecciona o crea un tercero.");$("aTercero")?.focus();return false;}
-    if(personas<1){msg("Ingresa la cantidad de personas.");$("aPersonas")?.focus();return false;}
-    if(room.capacidad!=null && personas>Number(room.capacidad)){msg(`La habitación ${room.numero} tiene capacidad para ${room.capacidad} personas.`);$("aPersonas")?.focus();return false;}
-    if(noches<1){msg("Ingresa una cantidad de noches válida.");$("aNoches")?.focus();return false;}
-    if(valor<=0){msg("Ingresa el valor por noche.");$("aValor")?.focus();return false;}
-    if(pagos>neto){msg("Los pagos, anticipo y CxC no pueden superar el valor a aplicar.");return false;}
-    msg("Alojamiento validado correctamente.",true);
-    return true;
-  }
-  window.validarAlojamiento=validarAlojamiento;
-
-  $("saveAloj")?.addEventListener("click",validarAlojamiento);
-
-  // F2 funciona desde cualquier campo del formulario activo.
-  // En ALOJAMIENTO solo intenta guardar cuando ya están completos los
-  // mínimos: fecha, habitación, personas, noches y valor por noche.
-  window.addEventListener("keydown",function(e){
+  document.addEventListener("keydown", function(e){
     if(e.key!=="F2") return;
-    const active=document.activeElement;
-    const form=active?.closest("#alojamientoForm,#recaudoForm,#salidaForm,#reservaForm,#genericMovementForm");
-    if(!form) return;
+
+    const el=document.activeElement;
+    if(!el || !/efectivo|bancolombia|nequi|bold/i.test(el.id||"")) return;
+
     e.preventDefault();
     e.stopImmediatePropagation();
 
-    if(form.id==="alojamientoForm"){
-      if(!validarAlojamiento()) return;
-      $(saveButtons.alojamiento)?.click();
-      return;
+    // Find the visible form/card containing the current payment field.
+    let form=el.closest("#alojamientoForm,#reservaForm,#recaudoForm,#salidaForm,#prestamoForm,#otrosForm,#cxcForm,#contableForm,#genericMovementForm,.movement-form");
+    if(!form){
+      form=el.closest(".form-card");
     }
-    const id=form.id==="recaudoForm"?saveButtons.recaudo:
-      form.id==="salidaForm"?saveButtons.salida:
-      form.id==="reservaForm"?saveButtons.reserva:saveButtons.generic;
-    $(id)?.click();
-  },true);
 
-  $("aHabitacion")?.addEventListener("change",function(){
-    if(!habitacionValida(this.value)){
-      msg(`La habitación "${this.value.trim()}" no existe. Selecciona una habitación válida de la lista.`);
-    }else{
-      msg("",true);
+    // Click the actual F2/GUARDAR button of that card.
+    if(form){
+      const buttons=[...form.querySelectorAll("button")].filter(visible);
+      const save=buttons.find(b=>/F2|GUARDAR/i.test((b.textContent||"").trim()));
+      if(save){
+        save.click();
+        return;
+      }
     }
+
+    // Fallback: visible global save button.
+    const save=[...document.querySelectorAll("button")]
+      .filter(visible)
+      .find(b=>/F2|GUARDAR/i.test((b.textContent||"").trim()));
+    if(save) save.click();
+  }, true);
+})();
+</script>
+
+
+<script id="v40-f2-alojamiento-real">
+(function(){
+  const $=id=>document.getElementById(id);
+
+  function validarAlojamiento(){
+    const fecha=$("aFecha")?.value;
+    const habitacion=$("aHabitacion")?.value.trim();
+    const tercero=(window.getTerceroValue ? window.getTerceroValue("aTercero") : $("aTercero")?.value||"").trim();
+    const personas=Math.max(0,Number($("aPersonas")?.value||0));
+    const noches=Math.max(0,Number($("aNoches")?.value||0));
+    const valor=Math.max(0,Number($("aValor")?.value||0));
+    const total=Math.max(0,noches*valor);
+    const neto=(($("aTercero")?.value||"")==="AIRBNB")
+      ? Math.max(0,total-Math.max(0,Number($("aComision")?.value||0)))
+      : total;
+
+    const pagos=["pEfectivo","pBancolombia","pNequi","pBold","aAnticipo","aCxc"]
+      .reduce((s,id)=>s+Math.max(0,Number($(id)?.value||0)),0);
+
+    const msg=$("aMsg");
+    if(!msg) return false;
+
+    if(!fecha){msg.textContent="Ingresa la fecha de operación.";msg.style.color="#d94b4b";$("aFecha")?.focus();return false;}
+    if(!habitacion){msg.textContent="Ingresa la habitación.";msg.style.color="#d94b4b";$("aHabitacion")?.focus();return false;}
+    if(!tercero){msg.textContent="Selecciona o crea un tercero.";msg.style.color="#d94b4b";$("aTercero")?.focus();return false;}
+    if(personas<1){msg.textContent="Ingresa la cantidad de personas.";msg.style.color="#d94b4b";$("aPersonas")?.focus();return false;}
+    if(noches<1){msg.textContent="Ingresa una cantidad de noches válida.";msg.style.color="#d94b4b";$("aNoches")?.focus();return false;}
+    if(valor<=0){msg.textContent="Ingresa el valor por noche.";msg.style.color="#d94b4b";$("aValor")?.focus();return false;}
+    if(pagos>neto){msg.textContent="Los pagos, anticipo y CxC no pueden superar el valor a aplicar.";msg.style.color="#d94b4b";return false;}
+
+    msg.textContent="Alojamiento validado correctamente.";
+    msg.style.color="#15946a";
+    return true;
+  }
+
+  // The V39 button had no click handler. Give the actual F2/GUARDAR button
+  // a real action so the keyboard shortcut and button do the same thing.
+  const save=$("saveAloj");
+  if(save){
+    save.type="button";
+    save.addEventListener("click", validarAlojamiento);
+  }
+
+  // F2 from the FIRST payment field and any other payment field.
+  ["pEfectivo","pBancolombia","pNequi","pBold"].forEach(id=>{
+    $(id)?.addEventListener("keydown",function(e){
+      if(e.key==="F2"){
+        e.preventDefault();
+        e.stopPropagation();
+        save?.click();
+      }
+    });
   });
+
+  // Capture phase also handles F2 reliably if another listener is present.
+  document.addEventListener("keydown",function(e){
+    if(e.key!=="F2") return;
+    const el=document.activeElement;
+    if(!el || !/^p(Efectivo|Bancolombia|Nequi|Bold)$/.test(el.id||"")) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    save?.click();
+  },true);
 })();
 </script>
 
@@ -2138,7 +2176,7 @@ document.querySelectorAll(".nav").forEach(n=>{
   function payloadGeneric(type){
     const fecha=txt('gFecha'), tercero=txt('gTercero'), valor=val('gValor');
     const map={prestamo:'PRESTAMO',otros:'OTROS_INGRESOS',cxc:'CUENTA_POR_COBRAR',contable:'MOVIMIENTO_CONTABLE',recaudo:'RECAUDO',reserva:'RESERVA'};
-    return {tipo:map[type]||String(type||'').toUpperCase(),subtipo:txt('gTipo'),fecha,tercero,habitacion:txt('gHabitacion'),personas:val('gPersonas'),noches:val('gNoches'),valor_noche:val('gValorNoche'),valor,efectivo:val('gEfectivo'),bancolombia:val('gBancolombia'),nequi:val('gNequi'),bold:val('gBold'),anticipo:val('gAnticipo'),cxc:type==='cxc'?valor:val('gCxc'),descripcion:txt('gConcepto')||txt('gTipo')||txt('gFuente'),referencia:txt('gReferencia'),observaciones:txt('gObs')};
+    return {tipo:map[type]||String(type||'').toUpperCase(),fecha,tercero,habitacion:txt('gHabitacion'),personas:val('gPersonas'),noches:val('gNoches'),valor_noche:val('gValorNoche'),valor,efectivo:val('gEfectivo'),bancolombia:val('gBancolombia'),nequi:val('gNequi'),bold:val('gBold'),anticipo:val('gAnticipo'),cxc:type==='cxc'?valor:val('gCxc'),descripcion:txt('gConcepto')||txt('gTipo')||txt('gFuente'),referencia:txt('gReferencia'),observaciones:txt('gObs')};
   }
   document.addEventListener('click',function(e){
     const id=e.target?.id;
