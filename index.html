@@ -821,7 +821,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;colo
       <div class="sh"><h2>🛏️ Registrar alojamiento</h2><span>F2 guarda</span></div>
       <div class="form-grid">
         <div class="field"><label>FECHA DE OPERACIÓN</label><input id="aFecha" type="date"></div>
-        <div class="field"><label>HABITACIÓN</label><select id="aHabitacion" disabled aria-describedby="aMsg"><option value="">Cargando habitaciones…</option></select></div>
+        <div class="field"><label>HABITACIÓN</label><input id="aHabitacion" type="text" autocomplete="off" aria-describedby="aMsg"></div>
         <div class="field"><label>TERCERO</label>
 <select id="aTercero">
 <option>CONSUMIDOR FINAL</option><option>AIRBNB</option>
@@ -1293,7 +1293,8 @@ function openMovement(type){
       q("genericMovementForm").style.display="none";
       q("reservaForm").style.display="none";
       q("alojamientoForm").style.display="block";
-      q("aHabitacion")?.focus();
+      window.ControlHotelAlojamiento?.loadRooms();
+      q("aFecha")?.focus();
       recalc();
       return;
     }
@@ -1982,51 +1983,7 @@ document.querySelectorAll(".nav").forEach(n=>{
 </script>
 
 
-<script id="v40-f2-alojamiento-real">
-(function(){
-  const $=id=>document.getElementById(id);
 
-  function validarAlojamiento(){
-    const fecha=$("aFecha")?.value;
-    const habitacion=$("aHabitacion")?.value.trim();
-    const tercero=(window.getTerceroValue ? window.getTerceroValue("aTercero") : $("aTercero")?.value||"").trim();
-    const personas=Math.max(0,Number($("aPersonas")?.value||0));
-    const noches=Math.max(0,Number($("aNoches")?.value||0));
-    const valor=Math.max(0,Number($("aValor")?.value||0));
-    const total=Math.max(0,noches*valor);
-    const neto=(($("aTercero")?.value||"")==="AIRBNB")
-      ? Math.max(0,total-Math.max(0,Number($("aComision")?.value||0)))
-      : total;
-
-    const pagos=["pEfectivo","pBancolombia","pNequi","pBold","aAnticipo","aCxc"]
-      .reduce((s,id)=>s+Math.max(0,Number($(id)?.value||0)),0);
-
-    const msg=$("aMsg");
-    if(!msg) return false;
-
-    if(!fecha){msg.textContent="Ingresa la fecha de operación.";msg.style.color="#d94b4b";$("aFecha")?.focus();return false;}
-    if(!habitacion){msg.textContent="Ingresa la habitación.";msg.style.color="#d94b4b";$("aHabitacion")?.focus();return false;}
-    if(!tercero){msg.textContent="Selecciona o crea un tercero.";msg.style.color="#d94b4b";$("aTercero")?.focus();return false;}
-    if(personas<1){msg.textContent="Ingresa la cantidad de personas.";msg.style.color="#d94b4b";$("aPersonas")?.focus();return false;}
-    if(noches<1){msg.textContent="Ingresa una cantidad de noches válida.";msg.style.color="#d94b4b";$("aNoches")?.focus();return false;}
-    if(valor<=0){msg.textContent="Ingresa el valor por noche.";msg.style.color="#d94b4b";$("aValor")?.focus();return false;}
-    if(pagos>neto){msg.textContent="Los pagos, anticipo y CxC no pueden superar el valor a aplicar.";msg.style.color="#d94b4b";return false;}
-
-    msg.textContent="Alojamiento validado correctamente.";
-    msg.style.color="#15946a";
-    return true;
-  }
-
-  // The V39 button had no click handler. Give the actual F2/GUARDAR button
-  // a real action so the keyboard shortcut and button do the same thing.
-  const save=$("saveAloj");
-  if(save){
-    save.type="button";
-    save.addEventListener("click", validarAlojamiento);
-  }
-
-})();
-</script>
 
 <script id="v42-recaudo-cuadre-final">
 (function(){
@@ -2050,6 +2007,35 @@ document.querySelectorAll(".nav").forEach(n=>{
   const save=$('saveAloj');
   const room=$('aHabitacion');
   const msg=$('aMsg');
+  let roomsPromise=null;
+  let roomsState='idle';
+  let errorField=null;
+
+  function clearError(){
+    if(errorField) $(errorField)?.removeAttribute('aria-invalid');
+    errorField=null;
+    msg.textContent='';
+    msg.style.cssText='';
+  }
+
+  function fail(id,text,focus=true){
+    if(errorField) $(errorField)?.removeAttribute('aria-invalid');
+    errorField=id;
+    $(id)?.setAttribute('aria-invalid','true');
+    setMessage(text,'error');
+    if(focus) $(id)?.focus();
+    refreshButton();
+    return false;
+  }
+
+  function validateRoom(focus=true){
+    const numero=room.value.trim();
+    if(roomsState!=='ready') return fail('aHabitacion',roomsState==='error'?'No fue posible cargar las habitaciones. Recarga la página para intentar de nuevo.':'Espera a que terminen de cargar las habitaciones.',focus);
+    if(!numero) return fail('aHabitacion','Debes ingresar la habitación.',focus);
+    if(!rooms.has(numero)) return fail('aHabitacion',`La habitación "${numero}" no existe o no está activa.`,focus);
+    if(errorField==='aHabitacion') clearError();
+    return true;
+  }
 
   function setMessage(text,kind){
     if(!msg) return;
@@ -2060,7 +2046,9 @@ document.querySelectorAll(".nav").forEach(n=>{
 
   function refreshButton(){
     if(!save) return;
-    const ready=Boolean($('aFecha')?.value && rooms.has(room?.value||'') && Number($('aPersonas')?.value||0)>=1 && Number($('aNoches')?.value||0)>=1 && Number($('aValor')?.value||0)>0);
+    const habitacion=rooms.get(room.value.trim());
+    const personas=Number($('aPersonas').value);
+    const ready=Boolean($('aFecha')?.value && habitacion && Number.isInteger(personas) && personas>=1 && personas<=Number(habitacion.capacidad) && Number($('aNoches')?.value||0)>=1 && Number($('aValor')?.value||0)>0);
     save.classList.toggle('is-not-ready',!ready);
     save.style.opacity=ready?'1':'0.68';
     save.style.filter=ready?'none':'saturate(0.7)';
@@ -2073,53 +2061,73 @@ document.querySelectorAll(".nav").forEach(n=>{
     const personas=$('aPersonas');
     const noches=$('aNoches');
     const valor=$('aValor');
-    const numero=room?.value||'';
-    if(!fecha?.value){setMessage('Debes ingresar la fecha de operación.','error');fecha?.focus();refreshButton();return false;}
-    if(!rooms.has(numero)){setMessage('Debes seleccionar una habitación válida de la lista.','error');room?.focus();refreshButton();return false;}
+    const numero=room.value.trim();
+    if(!fecha?.value || fecha.validity.badInput) return fail('aFecha','Debes ingresar la fecha de operación.');
+    if(!validateRoom()) return false;
     const habitacion=rooms.get(numero);
-    if(Number(personas?.value||0)<1){setMessage('Debes ingresar la cantidad de personas.','error');personas?.focus();refreshButton();return false;}
-    if(Number(personas.value)>Number(habitacion.capacidad||0)){setMessage(`La habitación ${habitacion.numero} tiene capacidad para ${habitacion.capacidad} personas.`,'error');personas.focus();refreshButton();return false;}
-    if(Number(noches?.value||0)<1){setMessage('Debes ingresar una cantidad de noches válida.','error');noches?.focus();refreshButton();return false;}
-    if(Number(valor?.value||0)<=0){setMessage('Debes ingresar el valor por noche.','error');valor?.focus();refreshButton();return false;}
+    if(!Number.isInteger(Number(personas.value)) || Number(personas.value)<1) return fail('aPersonas','Debes ingresar la cantidad de personas.');
+    if(!Number.isFinite(Number(habitacion.capacidad)) || Number(personas.value)>Number(habitacion.capacidad)) return fail('aPersonas',`La habitación ${habitacion.numero} tiene capacidad para ${habitacion.capacidad} personas.`);
+    if(!Number.isInteger(Number(noches.value)) || Number(noches.value)<1) return fail('aNoches','Debes ingresar una cantidad de noches válida.');
+    if(!Number.isFinite(Number(valor.value)) || Number(valor.value)<=0) return fail('aValor','Debes ingresar el valor por noche.');
+    const tercero=(window.getTerceroValue ? window.getTerceroValue('aTercero') : $('aTercero').value||'').trim();
+    if(!tercero) return fail('aTercero','Selecciona o crea un tercero.');
+    const pagos=['pEfectivo','pBancolombia','pNequi','pBold','aAnticipo','aCxc'].reduce((sum,id)=>sum+Math.max(0,Number($(id).value||0)),0);
+    const neto=Math.max(0,Number(noches.value)*Number(valor.value)-Math.max(0,Number($('aComision').value||0)));
+    if(pagos>neto) return fail('pBancolombia','Los pagos, anticipo y CxC no pueden superar el valor a aplicar.');
+    clearError();
     setMessage('Alojamiento listo para guardar.','ok');refreshButton();return true;
   }
 
-  async function loadRooms(){
+  function loadRooms(){
+    if(roomsPromise) return roomsPromise;
+    roomsState='loading';
+    roomsPromise=(async()=>{
     try{
       const response=await fetch(`${API_BASE}/habitaciones`);
       const payload=await response.json();
       if(!response.ok || !payload.ok) throw new Error(payload.error||`HTTP ${response.status}`);
+      if(!Array.isArray(payload.habitaciones)) throw new Error('Respuesta de habitaciones inválida.');
       rooms.clear();
-      room.innerHTML='<option value="">Selecciona una habitación</option>';
       for(const item of payload.habitaciones||[]){
         if(!item?.numero) continue;
-        const numero=String(item.numero);
+        const numero=String(item.numero).trim();
         rooms.set(numero,item);
-        const option=document.createElement('option');
-        option.value=numero;
-        option.textContent=item.nombre?`${numero} — ${item.nombre} (${item.capacidad} personas)`: `${numero} (${item.capacidad} personas)`;
-        room.appendChild(option);
       }
-      room.disabled=false;
+      roomsState='ready';
+      if(errorField==='aHabitacion' && rooms.has(room.value.trim())) clearError();
       refreshButton();
     }catch(error){
-      room.innerHTML='<option value="">No fue posible cargar habitaciones</option>';
-      room.disabled=true;
+      roomsState='error';
       setMessage(`No fue posible cargar las habitaciones: ${error.message}`,'error');
       refreshButton();
     }
+    })();
+    return roomsPromise;
   }
 
   ['aFecha','aHabitacion','aPersonas','aNoches','aValor'].forEach(id=>$(id)?.addEventListener('input',refreshButton));
-  room?.addEventListener('change',()=>{validateAndReport();});
+  room.addEventListener('input',()=>{
+    if(errorField==='aHabitacion' && rooms.has(room.value.trim())) clearError();
+  });
+  room.addEventListener('blur',event=>{
+    if(event.relatedTarget===save || event.relatedTarget===$('backCards')) return;
+    if(!$('aFecha').value){fail('aFecha','Debes ingresar la fecha de operación.');return;}
+    validateRoom();
+  });
+  save.type='button';
   form?.addEventListener('keydown',event=>{
+    if(event.key==='Enter' && event.target===room){
+      event.preventDefault();
+      if(!$('aFecha').value) fail('aFecha','Debes ingresar la fecha de operación.');
+      else if(validateRoom()) $('aPersonas').focus();
+      return;
+    }
     if(event.key!=='F2') return;
     event.preventDefault();
     event.stopPropagation();
-    if(validateAndReport()) save?.click();
+    if(!event.repeat) save?.click();
   },true);
   window.ControlHotelAlojamiento={validateAndReport,loadRooms,rooms};
-  loadRooms();
   refreshButton();
 })();
 </script>
@@ -2180,8 +2188,7 @@ document.querySelectorAll(".nav").forEach(n=>{
     e.preventDefault(); e.stopImmediatePropagation();
     if(id==='saveAloj'){
       if(!window.ControlHotelAlojamiento?.validateAndReport())return;
-      const p=payloadAloj(); if(!p.fecha||!p.tercero||!p.habitacion||p.personas<1||p.noches<1||p.valor<=0)return;
-      return persist(p);
+      return persist(payloadAloj());
     }
     if(id==='saveRecaudo'){
       const p=payloadRecaudo(); if(!p.fecha||!p.tercero||p.valor<=0)return alert('Completa fecha, tercero y valor del recaudo.');
