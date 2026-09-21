@@ -1095,6 +1095,8 @@ table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;colo
 </section>
 </main></div>
 
+<script src="config.js"></script>
+<script src="api.js"></script>
 <script>
 const API="https://control-hotel-api-production.up.railway.app/api/dashboard";
 const $=id=>document.getElementById(id);
@@ -1474,122 +1476,7 @@ document.querySelectorAll(".nav").forEach(n=>{
 
 
 
-<script>
-(function(){
-  const $=id=>document.getElementById(id);
-  const money=n=>'$'+Math.round(Number(n)||0).toLocaleString('es-CO');
 
-  function calcularNoches(){
-    const llegada=$('res-llegada').value;
-    const salida=$('res-salida').value;
-    let noches=0;
-    if(llegada && salida){
-      const a=new Date(llegada+'T00:00:00');
-      const b=new Date(salida+'T00:00:00');
-      noches=Math.round((b-a)/86400000);
-      if(noches<0) noches=0;
-    }
-    $('res-noches').value=noches;
-    $('res-noches-display').textContent=noches;
-    return noches;
-  }
-
-  window.actualizarReserva=function(){
-    const noches=calcularNoches();
-    const noche=Math.max(0,Number($('res-valor-noche').value)||0);
-    const total=noches*noche;
-    $('res-total').textContent=money(total);
-
-    // El anticipo NO se digita: es la suma de los cuatro medios de pago.
-    let efectivo=Math.max(0,Number($('res-efectivo').value)||0);
-    let bancolombia=Math.max(0,Number($('res-bancolombia').value)||0);
-    let nequi=Math.max(0,Number($('res-nequi').value)||0);
-    let bold=Math.max(0,Number($('res-bold').value)||0);
-
-    const maxRestante=Math.max(0,total);
-    let suma=efectivo+bancolombia+nequi+bold;
-
-    // Si se excede el total, recortar el último medio modificado lo resuelve
-    // en el listener; aquí solo protegemos el conjunto para que nunca supere el total.
-    if(suma>maxRestante){
-      const exceso=suma-maxRestante;
-      if(bold>=exceso) bold-=exceso;
-      else if(nequi>=exceso-bold){ nequi-=exceso-bold; bold=0; }
-      else if(bancolombia>=exceso-bold-nequi){ bancolombia-=exceso-bold-nequi; nequi=bold=0; }
-      else { efectivo=Math.max(0,efectivo-(exceso-bold-nequi-bancolombia)); bancolombia=nequi=bold=0; }
-      $('res-efectivo').value=efectivo;
-      $('res-bancolombia').value=bancolombia;
-      $('res-nequi').value=nequi;
-      $('res-bold').value=bold;
-      suma=efectivo+bancolombia+nequi+bold;
-    }
-
-    $('res-total-anticipo').textContent=money(suma);
-    $('res-balance-anticipo').textContent=money(suma);
-    $('res-balance-total').textContent=money(total);
-    const saldo=Math.max(0,total-suma);
-    $('res-saldo').textContent=money(saldo);
-
-    const msg=$('res-mensaje');
-    if(total===0){
-      msg.textContent='Ingresa las fechas y el valor por noche para calcular el total.';
-    }else if(suma===total){
-      msg.textContent='Reserva pagada en su totalidad. No queda saldo pendiente.';
-    }else if(suma>0){
-      msg.textContent='Anticipo registrado. El saldo pendiente queda para el alojamiento.';
-    }else{
-      msg.textContent='La reserva puede registrarse sin anticipo.';
-    }
-  };
-
-  window.abrirReserva=function(){
-    if(typeof window.showMovementForm==='function') window.showMovementForm('reserva');
-    document.querySelectorAll('.movement-form,.movement-screen,.generic-form').forEach(x=>{
-      if(x.id!=='form-reserva') x.style.display='none';
-    });
-    $('form-reserva').style.display='block';
-    const d=new Date(),today=d.toISOString().slice(0,10);
-    $('res-fecha-operacion').value=today;
-    $('res-fecha-reserva').value=today;
-    actualizarReserva();
-  };
-
-  window.guardarReserva=function(){
-    const tercero=window.getTerceroValue ? getTerceroValue('res-tercero') : $('res-tercero').value.trim();
-    const llegada=$('res-llegada').value;
-    const salida=$('res-salida').value;
-    const noches=calcularNoches();
-    const personas=Math.max(1,Number($('res-personas').value)||1);
-    const noche=Math.max(0,Number($('res-valor-noche').value)||0);
-    const total=noches*noche;
-    const pagos=['res-efectivo','res-bancolombia','res-nequi','res-bold']
-      .reduce((s,id)=>s+(Number($(id).value)||0),0);
-
-    if(!tercero)return alert('Ingresa el tercero.');
-    if(!llegada||!salida)return alert('Ingresa la fecha de llegada y salida.');
-    if(new Date(salida+'T00:00:00')<=new Date(llegada+'T00:00:00'))
-      return alert('La fecha de salida debe ser posterior a la llegada.');
-    if(noches<1)return alert('La reserva debe tener al menos una noche.');
-    if(noche<=0)return alert('Ingresa el valor por noche.');
-    if(pagos>total)return alert('Los medios de pago no pueden superar el total de la reserva.');
-
-    alert('Reserva validada. Próximo paso: conectar el guardado con Supabase.');
-  };
-
-  // Las noches se calculan exclusivamente a partir de llegada/salida.
-  ['res-llegada','res-salida'].forEach(id=>{
-    document.addEventListener('change',e=>{
-      if(e.target?.id===id) actualizarReserva();
-    });
-  });
-
-  ['res-valor-noche','res-efectivo','res-bancolombia','res-nequi','res-bold'].forEach(id=>{
-    document.addEventListener('input',e=>{
-      if(e.target?.id===id) actualizarReserva();
-    });
-  });
-})();
-</script>
 
 
 <script id="new-third-party-logic">
@@ -1649,79 +1536,7 @@ document.querySelectorAll(".nav").forEach(n=>{
 
 
 
-<script id="reserva-reference-logic">
-(function(){
-  const $=id=>document.getElementById(id);
-  const money=n=>'$ '+Math.round(Number(n)||0).toLocaleString('es-CO');
 
-  function calcularNoches(){
-    const a=$('res-llegada').value,b=$('res-salida').value;
-    let n=0;
-    if(a&&b){
-      n=Math.round((new Date(b+'T00:00:00')-new Date(a+'T00:00:00'))/86400000);
-      if(n<0)n=0;
-    }
-    $('res-noches').value=n;
-    $('res-noches-display').textContent=n;
-    return n;
-  }
-
-  window.actualizarReserva=function(){
-    const noches=calcularNoches();
-    const total=noches*Math.max(0,Number($('res-valor-noche').value)||0);
-    $('res-total').textContent=money(total);
-
-    const ids=['res-efectivo','res-bancolombia','res-nequi','res-bold'];
-    let suma=0;
-    ids.forEach(id=>{
-      let v=Math.max(0,Number($(id).value)||0);
-      const max=Math.max(0,total-suma);
-      if(v>max){v=max;$(id).value=v;}
-      suma+=v;
-    });
-
-    $('res-total-anticipo').textContent=money(suma);
-    $('res-saldo').textContent=money(Math.max(0,total-suma));
-  };
-
-  window.abrirReserva=function(){
-    if(typeof window.showMovementForm==='function') window.showMovementForm('reserva');
-    document.querySelectorAll('.movement-form,.movement-screen,.generic-form').forEach(x=>{
-      if(x.id!=='form-reserva')x.style.display='none';
-    });
-    $('form-reserva').style.display='block';
-    const t=new Date().toISOString().slice(0,10);
-    $('res-fecha-operacion').value=t;
-    $('res-fecha-reserva').value=t;
-    actualizarReserva();
-  };
-
-  window.guardarReserva=function(){
-    const tercero=(window.getTerceroValue?getTerceroValue('res-tercero'):$('res-tercero').value).trim();
-    const llegada=$('res-llegada').value,salida=$('res-salida').value;
-    const noches=calcularNoches();
-    const valorNoche=Math.max(0,Number($('res-valor-noche').value)||0);
-    const total=noches*valorNoche;
-    const pagos=['res-efectivo','res-bancolombia','res-nequi','res-bold'].reduce((s,id)=>s+(Number($(id).value)||0),0);
-    if(!tercero)return alert('Selecciona o crea un tercero.');
-    if(!llegada||!salida)return alert('Ingresa fecha de llegada y salida.');
-    if(noches<1)return alert('La salida debe ser posterior a la llegada.');
-    if(valorNoche<=0)return alert('Ingresa el valor por noche.');
-    if(pagos>total)return alert('Los medios de pago no pueden superar el total de la reserva.');
-    alert('Reserva validada. Próximo paso: conectar el guardado con Supabase.');
-  };
-
-  ['res-llegada','res-salida','res-valor-noche','res-efectivo','res-bancolombia','res-nequi','res-bold'].forEach(id=>{
-    document.addEventListener('input',e=>{if(e.target?.id===id)actualizarReserva();});
-    document.addEventListener('change',e=>{if(e.target?.id===id)actualizarReserva();});
-  });
-
-  const sel=$('res-tercero'),btn=$('res-btn-nuevo-tercero'),wrap=$('res-tercero-nuevo-wrap'),inp=$('res-tercero-nuevo');
-  function toggleNew(show){if(wrap)wrap.style.display=show?'block':'none';if(show&&inp)inp.focus();}
-  if(sel)sel.addEventListener('change',()=>toggleNew(sel.value==='__NUEVO_TERCERO__'));
-  if(btn)btn.addEventListener('click',()=>{sel.value='__NUEVO_TERCERO__';toggleNew(true);});
-})();
-</script>
 
 
 <script id="reserva-same-design-logic">
@@ -1958,13 +1773,8 @@ document.querySelectorAll(".nav").forEach(n=>{
       el(id)?.addEventListener('change',actualizarEfectivoReserva);
     });
 
-  // Ejecutar también después de que el formulario se abra o cualquier
-  // script previo haga su propio recálculo.
-  const original=window.actualizarReserva;
-  window.actualizarReserva=function(){
-    if(typeof original==='function') original();
-    actualizarEfectivoReserva();
-  };
+  // Una sola función de cálculo, compartida por apertura y medios de pago.
+  window.actualizarReserva=actualizarEfectivoReserva;
 
   actualizarEfectivoReserva();
 })();
@@ -2167,8 +1977,68 @@ document.querySelectorAll(".nav").forEach(n=>{
     const fecha=txt('res-fecha-operacion'), tercero=selected('res-tercero'), llegada=txt('res-llegada'), salida=txt('res-salida');
     const noches=Math.max(0,Math.round((new Date(salida+'T00:00:00')-new Date(llegada+'T00:00:00'))/86400000));
     const vn=Math.max(0,val('res-valor-noche')), total=noches*vn;
-    return {tipo:'RESERVA',fecha,tercero,habitacion:txt('res-habitacion'),personas:Math.max(0,val('res-personas')),noches,valor_noche:vn,valor:total,efectivo:val('res-efectivo'),bancolombia:val('res-bancolombia'),nequi:val('res-nequi'),bold:val('res-bold'),anticipo:sum('res-efectivo','res-bancolombia','res-nequi','res-bold'),descripcion:'Reserva / anticipo',referencia:txt('res-referencia'),observaciones:txt('res-observaciones')};
+    return {tipo:'RESERVA',fecha,fecha_reserva:txt('res-fecha-reserva'),llegada,salida,tercero,habitacion:txt('res-habitacion'),personas:val('res-personas'),noches,valor_noche:vn,valor:total,efectivo:val('res-efectivo'),bancolombia:val('res-bancolombia'),nequi:val('res-nequi'),bold:val('res-bold'),anticipo:sum('res-efectivo','res-bancolombia','res-nequi','res-bold'),descripcion:'Reserva / anticipo',referencia:txt('res-referencia'),observaciones:txt('res-observaciones')};
   }
+  let reservaBusy=false;
+  function validarReserva(p){
+    const fail=(id,text)=>{
+      $('res-mensaje').textContent=text;
+      $('res-mensaje').style.color='#d94b4b';
+      $(id)?.focus();
+      alert(text);
+      return false;
+    };
+    const date=value=>/^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0,10)===value;
+    if(!date(p.fecha)) return fail('res-fecha-operacion','Debes ingresar la fecha de operación.');
+    if(!date(p.fecha_reserva)) return fail('res-fecha-reserva','Debes ingresar una fecha de reserva válida.');
+    if(!p.tercero) return fail('res-tercero-nuevo','Selecciona o crea un tercero.');
+    if(!date(p.llegada)) return fail('res-llegada','Ingresa una fecha de llegada válida.');
+    if(!date(p.salida) || p.salida<=p.llegada) return fail('res-salida','La salida debe ser posterior a la llegada.');
+    if(p.fecha_reserva>p.llegada) return fail('res-fecha-reserva','La fecha de reserva no puede ser posterior a la llegada.');
+    if(!Number.isInteger(p.personas) || p.personas<1) return fail('res-personas','Debes ingresar una cantidad de personas entera mayor que cero.');
+    if(!Number.isInteger(p.noches) || p.noches<1) return fail('res-salida','La reserva debe tener al menos una noche.');
+    if(!Number.isFinite(p.valor_noche) || p.valor_noche<=0 || !Number.isFinite(p.valor)) return fail('res-valor-noche','Ingresa un valor por noche válido.');
+    for(const medio of ['efectivo','bancolombia','nequi','bold']){
+      if(!Number.isFinite(p[medio]) || p[medio]<0) return fail('res-'+medio,'Los medios de pago deben ser números mayores o iguales a cero.');
+    }
+    const recaudado=p.efectivo+p.bancolombia+p.nequi+p.bold;
+    if(Math.abs(recaudado-p.valor)>0.005 || Math.abs(p.anticipo-recaudado)>0.005) return fail('res-bancolombia','La suma de los medios de pago debe ser igual al valor a recaudar.');
+    $('res-mensaje').textContent='';
+    return true;
+  }
+  async function persistReserva(p,onSuccess){
+    if(reservaBusy) return;
+    reservaBusy=true;
+    $('saveReserva').disabled=true;
+    try{
+      const data=await window.ControlHotelAPI.crearMovimiento(p);
+      if(!data.ok) throw new Error(data.error||'La API no confirmó el registro de la reserva.');
+      if(onSuccess) onSuccess(data);
+      alert('Movimiento guardado correctamente.');
+      if(typeof load==='function') await load(false);
+      $('reservaForm').style.display='none';
+      $('movementCards').style.display='grid';
+    }catch(error){
+      $('res-mensaje').textContent='No se pudo guardar la reserva: '+error.message;
+      alert('No se pudo guardar la reserva: '+error.message);
+    }finally{
+      reservaBusy=false;
+      $('saveReserva').disabled=false;
+    }
+  }
+  window.guardarReserva=function(){
+    if(reservaBusy) return;
+    const p=payloadReserva();
+    if(!validarReserva(p)) return;
+    return persistReserva(p);
+  };
+  $('reservaForm').addEventListener('keydown',event=>{
+    if(event.key!=='F2') return;
+    event.preventDefault();
+    event.stopPropagation();
+    if(!event.repeat) window.guardarReserva();
+  });
+  $('saveReserva').type='button';
   function payloadRecaudo(){
     const tercero=selected('rec-tercero'), fecha=txt('rec-fecha'), valor=val('rec-valor');
     return {tipo:'RECAUDO',fecha,tercero,valor,efectivo:val('rec-efectivo'),bancolombia:val('rec-bancolombia'),nequi:val('rec-nequi'),bold:val('rec-bold'),descripcion:'Recaudo de cuenta por cobrar',observaciones:txt('rec-observaciones')};
@@ -2207,11 +2077,10 @@ document.querySelectorAll(".nav").forEach(n=>{
   document.addEventListener('click',function(e){
     if(e.target?.id!=='saveReserva')return;
     e.preventDefault();e.stopImmediatePropagation();
-    const p=payloadReserva();
-    if(!p.fecha||!p.tercero||!p.llegada||!p.salida||p.noches<1||p.valor<=0)return alert('Completa los datos obligatorios de la reserva.');
-    return persist(p);
+    return window.guardarReserva();
   },true);
-  window.ControlHotelPersist={persist,payloadAloj,payloadReserva,payloadRecaudo,payloadSalida,payloadGeneric};
+  // Mantener intacto el transporte aprobado de las otras tarjetas.
+  window.ControlHotelPersist={persist:(p,onSuccess)=>p.tipo==='RESERVA'?persistReserva(p,onSuccess):persist(p,onSuccess),payloadAloj,payloadReserva,payloadRecaudo,payloadSalida,payloadGeneric};
 })();
 </script>
 
