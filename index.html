@@ -821,7 +821,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;colo
       <div class="sh"><h2>🛏️ Registrar alojamiento</h2><span>F2 guarda</span></div>
       <div class="form-grid">
         <div class="field"><label>FECHA DE OPERACIÓN</label><input id="aFecha" type="date"></div>
-        <div class="field"><label>HABITACIÓN</label><input id="aHabitacion" type="text" autocomplete="off" aria-describedby="aMsg"></div>
+        <div class="field"><label>HABITACIÓN</label><input id="aHabitacion" type="text" autocomplete="off"></div>
         <div class="field"><label>TERCERO</label>
 <select id="aTercero">
 <option>CONSUMIDOR FINAL</option><option>AIRBNB</option>
@@ -1106,16 +1106,18 @@ function label(ym){let[a,b]=ym.split("-").map(Number);return new Intl.DateTimeFo
 function bounds(ym){let[a,b]=ym.split("-").map(Number);return {from:ym+"-01",to:ym+"-"+String(new Date(a,b,0).getDate()).padStart(2,"0")}}
 function months(){let s=$("month"),n=new Date();for(let i=0;i<24;i++){let d=new Date(n.getFullYear(),n.getMonth()-i,1),ym=d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0"),o=document.createElement("option");o.value=ym;o.textContent=label(ym);s.appendChild(o)}}
 function render(c){
- let income=Number(c.ingresos||0),expense=Number(c.gastos||0),res=income-expense;
+ const present=v=>v!==null && v!==undefined && Number.isFinite(Number(v));
+ const optionalMoney=v=>present(v)?money(v):"—";
+ let income=Number(c.ingresos||0),expense=present(c.gastos)?Number(c.gastos):null,res=present(c.resultado)?Number(c.resultado):null;
  $("period").textContent=label(String(c.mes||$("month").value).slice(0,7));
- $("sales").textContent=money(c.venta_alojamiento);$("result").textContent=money(res);$("cash").textContent=money(c.flujo_neto);$("cxc").textContent=money(c.cartera_generada);
+ $("sales").textContent=money(c.venta_alojamiento);$("result").textContent=optionalMoney(res);$("cash").textContent=money(c.flujo_neto);$("cxc").textContent=money(c.cartera_generada);
  $("guests").textContent=num(c.total_huespedes);$("rooms").textContent=num(c.registros_habitacion);$("guestDays").textContent=num(c.dias_con_huespedes);$("noGuestDays").textContent=num(c.dias_sin_huespedes);
- $("avgGuests").textContent=num(c.promedio_huespedes_dia,2);$("avgSales").textContent=money(c.promedio_venta_alojamiento_dia);$("perGuest").textContent=money(c.ingreso_por_huesped);$("bar").style.width=Math.min(100,Number(c.promedio_huespedes_dia||0)/19*100)+"%";
- $("income").textContent=money(c.ingresos);$("outflow").textContent=money(c.salidas);$("collections").textContent=money(c.recaudos_alojamiento);$("reserves").textContent=money(c.reservas_alojamiento);$("loans").textContent=money(c.prestamos);
- $("income2").textContent=money(income);$("expenses").textContent=money(expense);$("result2").textContent=money(res);$("movements").textContent=num(c.movimientos);
- $("days").textContent=num(c.dias_con_registros);$("distinct").textContent=num(c.habitaciones_distintas_registradas);$("reserves2").textContent=money(c.reservas_alojamiento);$("movementValue").textContent=money(c.valor_movimientos);
- $("reading").textContent=income>expense?`Resultado positivo de ${money(res)}. La venta causada y la tesorería se muestran por separado para evitar doble conteo.`:income<expense?`Resultado negativo de ${money(Math.abs(res))}. Se compara el ingreso reconocido contra los gastos del período.`:"Ingresos y gastos del período están en equilibrio.";
- $("table").innerHTML=`<table><thead><tr><th>Indicador</th><th>Valor</th></tr></thead><tbody><tr><td>Venta de alojamiento</td><td>${money(c.venta_alojamiento)}</td></tr><tr><td>Ingresos reconocidos</td><td>${money(c.ingresos)}</td></tr><tr><td>Gastos</td><td>${money(c.gastos)}</td></tr><tr><td>Flujo neto</td><td>${money(c.flujo_neto)}</td></tr><tr><td>Huéspedes</td><td>${num(c.total_huespedes)}</td></tr><tr><td>Movimientos</td><td>${num(c.movimientos)}</td></tr></tbody></table>`;
+ $("avgGuests").textContent=present(c.promedio_huespedes_dia)?num(c.promedio_huespedes_dia,2):"—";$("avgSales").textContent=optionalMoney(c.promedio_venta_alojamiento_dia);$("perGuest").textContent=optionalMoney(c.ingreso_por_huesped);$("bar").style.width=Math.min(100,Number(c.promedio_huespedes_dia||0)/19*100)+"%";
+ $("income").textContent=money(c.ingresos);$("outflow").textContent=money(c.salidas);$("collections").textContent=money(c.recaudos_alojamiento);$("reserves").textContent=optionalMoney(c.anticipos_recibidos);$("loans").textContent=money(c.prestamos);
+ $("income2").textContent=money(income);$("expenses").textContent=optionalMoney(expense);$("result2").textContent=optionalMoney(res);$("movements").textContent=num(c.movimientos);
+ $("days").textContent=num(c.dias_con_registros);$("distinct").textContent=num(c.habitaciones_distintas_registradas);$("reserves2").textContent=optionalMoney(c.anticipos_recibidos);$("movementValue").textContent=money(c.valor_movimientos);
+ $("reading").textContent=res===null?"La vista informa cobros registrados; no dispone de un resultado operativo calculado ni de gastos devengados. Reservas recibidas no incluye anticipos aplicados.":`Resultado del período: ${money(res)}.`;
+ $("table").innerHTML=`<table><thead><tr><th>Indicador</th><th>Valor</th></tr></thead><tbody><tr><td>Venta de alojamiento</td><td>${money(c.venta_alojamiento)}</td></tr><tr><td>Cobros registrados en ingresos</td><td>${money(c.ingresos)}</td></tr><tr><td>Gastos</td><td>${optionalMoney(c.gastos)}</td></tr><tr><td>Flujo neto</td><td>${money(c.flujo_neto)}</td></tr><tr><td>Huéspedes</td><td>${num(c.total_huespedes)}</td></tr><tr><td>Movimientos</td><td>${num(c.movimientos)}</td></tr></tbody></table>`;
 }
 async function load(auto=false){
  $("refresh").disabled=true;$("status").className="status";$("status").textContent="Consultando datos…";let ym=$("month").value;
@@ -1817,23 +1819,48 @@ document.querySelectorAll(".nav").forEach(n=>{
   const save=$('saveAloj');
   const room=$('aHabitacion');
   const msg=$('aMsg');
+  const messageHome=document.createComment('Ubicación del mensaje general de alojamiento');
+  msg.before(messageHome);
+  msg.setAttribute('aria-live','polite');
+  msg.setAttribute('aria-atomic','true');
   let roomsPromise=null;
   let roomsState='idle';
   let errorField=null;
 
+  function detachFieldError(){
+    const field=errorField && $(errorField);
+    if(!field) return;
+    field.removeAttribute('aria-invalid');
+    const descriptions=(field.getAttribute('aria-describedby')||'').split(/\s+/).filter(id=>id && id!=='aMsg');
+    if(descriptions.length) field.setAttribute('aria-describedby',descriptions.join(' '));
+    else field.removeAttribute('aria-describedby');
+  }
+
   function clearError(){
-    if(errorField) $(errorField)?.removeAttribute('aria-invalid');
+    detachFieldError();
     errorField=null;
     msg.textContent='';
     msg.style.cssText='';
+    messageHome.after(msg);
   }
 
   function fail(id,text,focus=true){
-    if(errorField) $(errorField)?.removeAttribute('aria-invalid');
+    detachFieldError();
     errorField=id;
-    $(id)?.setAttribute('aria-invalid','true');
+    const field=$(id);
+    const container=field?.closest('.field');
+    field?.setAttribute('aria-invalid','true');
+    if(field){
+      const descriptions=new Set((field.getAttribute('aria-describedby')||'').split(/\s+/).filter(Boolean));
+      descriptions.add('aMsg');
+      field.setAttribute('aria-describedby',[...descriptions].join(' '));
+    }
+    if(container) container.appendChild(msg);
     setMessage(text,'error');
-    if(focus) $(id)?.focus();
+    if(focus){
+      field?.focus();
+      container?.scrollIntoView({block:'nearest',inline:'nearest'});
+    }
     refreshButton();
     return false;
   }
@@ -1908,7 +1935,7 @@ document.querySelectorAll(".nav").forEach(n=>{
       refreshButton();
     }catch(error){
       roomsState='error';
-      setMessage(`No fue posible cargar las habitaciones: ${error.message}`,'error');
+      fail('aHabitacion',`No fue posible cargar las habitaciones: ${error.message}`,false);
       refreshButton();
     }
     })();
@@ -1920,7 +1947,7 @@ document.querySelectorAll(".nav").forEach(n=>{
     if(errorField==='aHabitacion' && rooms.has(room.value.trim())) clearError();
   });
   room.addEventListener('blur',event=>{
-    if(event.relatedTarget===save || event.relatedTarget===$('backCards')) return;
+    if(event.relatedTarget===save || event.relatedTarget===$('backCards') || event.relatedTarget?.hasAttribute('data-clear-form')) return;
     if(!$('aFecha').value){fail('aFecha','Debes ingresar la fecha de operación.');return;}
     validateRoom();
   });
@@ -1937,7 +1964,7 @@ document.querySelectorAll(".nav").forEach(n=>{
     event.stopPropagation();
     if(!event.repeat) save?.click();
   },true);
-  window.ControlHotelAlojamiento={validateAndReport,loadRooms,rooms};
+  window.ControlHotelAlojamiento={validateAndReport,loadRooms,rooms,clearError};
   refreshButton();
 })();
 </script>
@@ -1956,6 +1983,7 @@ document.querySelectorAll(".nav").forEach(n=>{
     if(busy)return;
     busy=true;
     try{
+      if(!window.confirm(`¿Guardar este movimiento de ${payload.tipo}?\nValor: $${Number(payload.valor).toLocaleString('es-CO')}\n\nCancelar permite volver al formulario sin guardar.`)) return;
       const r=await fetch(API_MOV,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       let d={}; try{d=await r.json()}catch{}
       if(!r.ok) throw new Error(d.error||d.message||('HTTP '+r.status));
@@ -2011,6 +2039,7 @@ document.querySelectorAll(".nav").forEach(n=>{
     reservaBusy=true;
     $('saveReserva').disabled=true;
     try{
+      if(!window.confirm(`¿Guardar esta reserva / anticipo?\nImporte a recaudar: $${Number(p.anticipo).toLocaleString('es-CO')}\n\nCancelar permite volver al formulario sin guardar.`)) return;
       const data=await window.ControlHotelAPI.crearMovimiento(p);
       if(!data.ok) throw new Error(data.error||'La API no confirmó el registro de la reserva.');
       if(onSuccess) onSuccess(data);
@@ -2080,7 +2109,48 @@ document.querySelectorAll(".nav").forEach(n=>{
     return window.guardarReserva();
   },true);
   // Mantener intacto el transporte aprobado de las otras tarjetas.
-  window.ControlHotelPersist={persist:(p,onSuccess)=>p.tipo==='RESERVA'?persistReserva(p,onSuccess):persist(p,onSuccess),payloadAloj,payloadReserva,payloadRecaudo,payloadSalida,payloadGeneric};
+  window.ControlHotelPersist={persist:(p,onSuccess)=>p.tipo==='RESERVA'?persistReserva(p,onSuccess):persist(p,onSuccess),isSaving:()=>busy||reservaBusy,payloadAloj,payloadReserva,payloadRecaudo,payloadSalida,payloadGeneric};
+})();
+</script>
+
+<script id="limpiar-formularios">
+(function(){
+  const $=id=>document.getElementById(id);
+  const forms={alojamientoForm:'saveAloj',recaudoForm:'saveRecaudo',salidaForm:'saveSalida',reservaForm:'saveReserva',genericMovementForm:'gSave'};
+  for(const [formId,saveId] of Object.entries(forms)){
+    const form=$(formId),save=$(saveId);
+    const button=document.createElement('button');
+    button.type='button';
+    button.className='btn secondary';
+    button.textContent='LIMPIAR';
+    button.setAttribute('data-clear-form',formId);
+    save.before(button);
+    button.addEventListener('click',()=>{
+      if(window.ControlHotelPersist.isSaving()) return;
+      if(formId==='alojamientoForm') window.ControlHotelAlojamiento.clearError();
+      const fields=[...form.querySelectorAll('input,select,textarea')];
+      // Primero restaurar todos los campos; luego recalcular con los valores limpios.
+      for(const field of fields){
+        if(field.tagName==='SELECT'){
+          field.selectedIndex=Math.max(0,[...field.options].findIndex(option=>option.defaultSelected));
+        }else if(field.type==='checkbox'||field.type==='radio'){
+          field.checked=field.defaultChecked;
+        }else{
+          field.value=field.defaultValue;
+        }
+        field.removeAttribute('aria-invalid');
+      }
+      if(formId==='recaudoForm' && $('rec-cxc-pendiente')) $('rec-cxc-pendiente').dataset.value='0';
+      for(const field of fields){
+        field.dispatchEvent(new Event('input',{bubbles:true}));
+        field.dispatchEvent(new Event('change',{bubbles:true}));
+      }
+      for(const id of ['aMsg','rec-mensaje','sal-mensaje','res-mensaje']){
+        if(form.contains($(id))) $(id).textContent='';
+      }
+      form.querySelector('input:not([type="hidden"]):not([readonly]):not([disabled]),select:not([disabled]),textarea')?.focus();
+    });
+  }
 })();
 </script>
 
