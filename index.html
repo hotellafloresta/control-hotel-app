@@ -1037,7 +1037,6 @@ table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;colo
 
     <div class="form-grid">
       <div class="field"><label>FECHA DE OPERACIÓN</label><input id="res-fecha-operacion" type="date"></div>
-      <div class="field"><label>FECHA DE RESERVA</label><input id="res-fecha-reserva" type="date"></div>
 
       <div class="field"><label>TERCERO</label>
         <select id="res-tercero">
@@ -1187,7 +1186,6 @@ const movementConfig={
   note:"Recibe dinero antes de causar el alojamiento. La reserva conserva el precio pactado y la habitación es una preferencia, no una asignación definitiva.",
   fields:`
    <div class="g-field"><label>FECHA DE OPERACIÓN</label><input id="gFecha" type="date"></div>
-   <div class="g-field"><label>FECHA DE RESERVA</label><input id="gFechaReserva" type="date"></div>
    <div class="g-field"><label>TERCERO</label><select id="gTercero"><option>CONSUMIDOR FINAL</option><option>AIRBNB</option></select></div>
    <div class="g-field"><label>HABITACIÓN PREFERIDA</label><input id="gHabitacion" placeholder="Ej. 202 A"></div>
    <div class="g-field"><label>FECHA DE LLEGADA</label><input id="gLlegada" type="date"></div>
@@ -1333,7 +1331,6 @@ function openMovement(type){
       q("reservaForm").style.display="block";
       const t=new Date().toISOString().slice(0,10);
       q("res-fecha-operacion").value=t;
-      q("res-fecha-reserva").value=t;
       if(typeof actualizarReserva==="function") actualizarReserva();
       q("res-tercero")?.focus();
       return;
@@ -2007,7 +2004,7 @@ document.querySelectorAll(".nav").forEach(n=>{
     const fecha=txt('res-fecha-operacion'), tercero=selected('res-tercero'), llegada=txt('res-llegada'), salida=txt('res-salida');
     const noches=Math.max(0,Math.round((new Date(salida+'T00:00:00')-new Date(llegada+'T00:00:00'))/86400000));
     const vn=Math.max(0,val('res-valor-noche')), total=noches*vn;
-    return {tipo:'RESERVA',fecha,fecha_reserva:txt('res-fecha-reserva'),llegada,salida,tercero,habitacion:txt('res-habitacion'),personas:val('res-personas'),noches,valor_noche:vn,valor:total,efectivo:val('res-efectivo'),bancolombia:val('res-bancolombia'),nequi:val('res-nequi'),bold:val('res-bold'),anticipo:sum('res-efectivo','res-bancolombia','res-nequi','res-bold'),descripcion:'Reserva / anticipo',referencia:txt('res-referencia'),observaciones:txt('res-observaciones')};
+    return {tipo:'RESERVA',fecha,llegada,salida,tercero,habitacion:txt('res-habitacion'),personas:val('res-personas'),noches,valor_noche:vn,valor:total,efectivo:val('res-efectivo'),bancolombia:val('res-bancolombia'),nequi:val('res-nequi'),bold:val('res-bold'),anticipo:sum('res-efectivo','res-bancolombia','res-nequi','res-bold'),descripcion:'Reserva / anticipo',referencia:txt('res-referencia'),observaciones:txt('res-observaciones')};
   }
   let reservaBusy=false;
   function validarReserva(p){
@@ -2020,11 +2017,9 @@ document.querySelectorAll(".nav").forEach(n=>{
     };
     const date=value=>/^\d{4}-\d{2}-\d{2}$/.test(value) && Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0,10)===value;
     if(!date(p.fecha)) return fail('res-fecha-operacion','Debes ingresar la fecha de operación.');
-    if(!date(p.fecha_reserva)) return fail('res-fecha-reserva','Debes ingresar una fecha de reserva válida.');
     if(!p.tercero) return fail('res-tercero-nuevo','Selecciona o crea un tercero.');
     if(!date(p.llegada)) return fail('res-llegada','Ingresa una fecha de llegada válida.');
     if(!date(p.salida) || p.salida<=p.llegada) return fail('res-salida','La salida debe ser posterior a la llegada.');
-    if(p.fecha_reserva>p.llegada) return fail('res-fecha-reserva','La fecha de reserva no puede ser posterior a la llegada.');
     if(!Number.isInteger(p.personas) || p.personas<1) return fail('res-personas','Debes ingresar una cantidad de personas entera mayor que cero.');
     if(!Number.isInteger(p.noches) || p.noches<1) return fail('res-salida','La reserva debe tener al menos una noche.');
     if(!Number.isFinite(p.valor_noche) || p.valor_noche<=0 || !Number.isFinite(p.valor)) return fail('res-valor-noche','Ingresa un valor por noche válido.');
