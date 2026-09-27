@@ -1468,12 +1468,12 @@ document.addEventListener("keydown",e=>{
 <script>
 (()=>{
  const view=document.getElementById('habitacionesView'),status=document.getElementById('habitacionesEstado'),list=document.getElementById('habitacionesLista');
- let loading=false,loaded=false;
+ let loading=false;
  async function cargarHabitaciones(){
-  if(loading||loaded)return;
+  if(loading)return;
   loading=true;status.textContent='Cargando habitaciones…';list.replaceChildren();
   try{
-   const response=await fetch(window.CONTROL_HOTEL_CONFIG.API_URL+'/api/habitaciones');
+   const response=await fetch(window.CONTROL_HOTEL_CONFIG.API_URL+'/api/habitaciones/estado');
    if(!response.ok)throw new Error('HTTP '+response.status);
    const data=await response.json();
    if(data.ok!==true||!Array.isArray(data.habitaciones))throw new Error('Respuesta inválida');
@@ -1482,9 +1482,22 @@ document.addEventListener("keydown",e=>{
     const title=document.createElement('h2');title.textContent=String(room.numero??room.nombre??'');
     const name=document.createElement('p');name.textContent=room.nombre&&String(room.nombre)!==String(room.numero)?room.nombre:'';
     const capacity=document.createElement('p');capacity.textContent='Capacidad: '+String(room.capacidad??'Sin dato');
-    card.append(title,name,capacity);list.append(card);
+    const state=document.createElement('p');state.textContent='Estado no determinado';state.className='status';
+    card.append(title,state);
+    if(name.textContent)card.append(name);
+    const upcoming=room.reservas_previstas?.[0];
+    if(upcoming){
+     const add=text=>{const p=document.createElement('p');p.textContent=text;card.append(p);};
+     add('Reserva registrada · habitación preferida');
+     if(upcoming.tercero)add('Tercero: '+upcoming.tercero);
+     add('Llegada prevista: '+upcoming.llegada+(upcoming.llegada_prevista_hoy?' · Hoy':''));
+     add('Salida prevista: '+upcoming.salida);
+     if(upcoming.personas)add('Personas previstas: '+upcoming.personas);
+     if(room.reservas_previstas.length>1)add('Otras reservas registradas: '+(room.reservas_previstas.length-1));
+    }
+    card.append(capacity);list.append(card);
    }
-   loaded=true;status.textContent=data.habitaciones.length?data.habitaciones.length+' habitaciones':'No hay habitaciones para mostrar.';
+   status.textContent=data.habitaciones.length?data.habitaciones.length+' habitaciones. '+(data.limitacion||''):'No hay habitaciones para mostrar.';
   }catch(error){status.textContent='No fue posible cargar las habitaciones. Vuelve a entrar para reintentar.';}
   finally{loading=false;}
  }
