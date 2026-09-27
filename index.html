@@ -885,11 +885,9 @@ table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;colo
           <option value="__NUEVO_TERCERO__">＋ Crear nuevo tercero…</option>
         </select>
       </div>
-      <div class="field"><label>TIPO DE CARTERA</label>
+      <div class="field"><label>CUENTA POR COBRAR</label>
         <select id="rec-tipo">
-          <option value="ALOJAMIENTO">ALOJAMIENTO</option>
-          <option value="OTROS INGRESOS">OTROS INGRESOS</option>
-          <option value="PRÉSTAMO">PRÉSTAMO</option>
+          <option value="">Seleccione un tercero para consultar sus cuentas</option>
         </select>
       </div>
       <div class="field"><label>CxC PENDIENTE</label><div class="recaudo-readonly" id="rec-cxc-pendiente">$0</div></div>
@@ -1229,7 +1227,7 @@ const movementConfig={
  },
  otros:{
   title:"💵 Registrar otro ingreso",
-  note:"Registra ingresos adicionales como horas adicionales, daños, productos o servicios. Puede cobrarse de inmediato o quedar como CxC.",
+  note:"Registra cobros adicionales inmediatos como daños, productos o servicios. Esta tarjeta no genera crédito ni alojamiento.",
   fields:`
    <div class="g-field"><label>FECHA DE OPERACIÓN</label><input id="gFecha" type="date"></div>
    <div class="g-field"><label>FUENTE DEL INGRESO</label><select id="gFuente"><option>CLIENTE</option><option>HUÉSPED</option><option>TERCERO</option><option>OTRO</option></select></div>
@@ -1325,6 +1323,7 @@ function openMovement(type){
       q("rec-fecha").value=t;
       q("rec-tercero").focus();
       actualizarRecaudo();
+      window.ControlHotelOperativas?.cargarCuentas();
       return;
     }
     if(type==="reserva"){
@@ -1364,7 +1363,7 @@ function bindGeneric(type){
  const date=q("gFecha");
  if(date) date.addEventListener("change",()=>localStorage.setItem("ch_last_date",date.value));
 
- const vals=["gValor","gEfectivo","gBancolombia","gNequi","gBold","gCxc","gAnticipo","gDebito","gCredito","gLlegada","gSalida","gValorNoche"];
+ const vals=["gValor","gEfectivo","gBancolombia","gNequi","gBold","gCxc","gAnticipo","gDebito","gCredito","gLlegada","gSalida","gValorNoche","gPlazo","gFecha"];
  vals.forEach(id=>q(id)?.addEventListener("input",()=>validateGeneric(type)));
  vals.forEach(id=>q(id)?.addEventListener("change",()=>validateGeneric(type)));
 
@@ -1458,7 +1457,10 @@ function validateGeneric(type){
 
 q("gBack").onclick=()=>{q("genericMovementForm").style.display="none";q("movementCards").style.display="grid"};
 document.addEventListener("keydown",e=>{
- if(e.key==="F2" && q("genericMovementForm").style.display!=="none"){e.preventDefault();q("gSave").click()}
+ if(e.key!=="F2")return;
+ for(const [form,button] of [["recaudoForm","saveRecaudo"],["salidaForm","saveSalida"],["genericMovementForm","gSave"]]){
+   if(q(form)?.getClientRects().length){e.preventDefault();if(!e.repeat)q(button).click();return;}
+ }
 });
 </script>
 
@@ -2070,17 +2072,100 @@ document.querySelectorAll(".nav").forEach(n=>{
   $('saveReserva').type='button';
   function payloadRecaudo(){
     const tercero=selected('rec-tercero'), fecha=txt('rec-fecha'), valor=val('rec-valor');
-    return {tipo:'RECAUDO',fecha,tercero,valor,efectivo:val('rec-efectivo'),bancolombia:val('rec-bancolombia'),nequi:val('rec-nequi'),bold:val('rec-bold'),descripcion:'Recaudo de cuenta por cobrar',observaciones:txt('rec-observaciones')};
+    return {tipo:'RECAUDO',fecha,tercero,cuenta_id:txt('rec-tipo'),valor,efectivo:val('rec-efectivo'),bancolombia:val('rec-bancolombia'),nequi:val('rec-nequi'),bold:val('rec-bold'),descripcion:'Recaudo de cuenta por cobrar',observaciones:txt('rec-observaciones')};
   }
   function payloadSalida(){
     const tercero=selected('sal-tercero'), fecha=txt('sal-fecha'), valor=val('sal-valor');
-    return {tipo:'SALIDA',fecha,tercero,valor,efectivo:val('sal-efectivo'),bancolombia:val('sal-bancolombia'),nequi:val('sal-nequi'),bold:val('sal-bold'),descripcion:txt('sal-concepto'),referencia:txt('sal-tipo'),observaciones:txt('sal-observaciones')};
+    return {tipo:'SALIDA',subtipo:txt('sal-tipo'),fecha,tercero,valor,efectivo:val('sal-efectivo'),bancolombia:val('sal-bancolombia'),nequi:val('sal-nequi'),bold:val('sal-bold'),descripcion:txt('sal-concepto'),referencia:txt('sal-tipo'),observaciones:txt('sal-observaciones')};
   }
   function payloadGeneric(type){
-    const fecha=txt('gFecha'), tercero=txt('gTercero'), valor=val('gValor');
+    const fecha=txt('gFecha'), tercero=type==='otros'?'CONSUMIDOR FINAL':txt('gTercero'), valor=val('gValor');
     const map={prestamo:'PRESTAMO',otros:'OTROS_INGRESOS',cxc:'CUENTA_POR_COBRAR',contable:'MOVIMIENTO_CONTABLE',recaudo:'RECAUDO',reserva:'RESERVA'};
-    return {tipo:map[type]||String(type||'').toUpperCase(),subtipo:txt('gTipo'),fecha,tercero,habitacion:txt('gHabitacion'),personas:val('gPersonas'),noches:val('gNoches'),valor_noche:val('gValorNoche'),valor,efectivo:val('gEfectivo'),bancolombia:val('gBancolombia'),nequi:val('gNequi'),bold:val('gBold'),anticipo:val('gAnticipo'),cxc:type==='cxc'?valor:val('gCxc'),descripcion:txt('gConcepto')||txt('gTipo')||txt('gFuente'),referencia:txt('gReferencia'),observaciones:txt('gObs')};
+    return {tipo:map[type]||String(type||'').toUpperCase(),subtipo:txt('gTipo'),fecha,tercero,habitacion:txt('gHabitacion'),personas:val('gPersonas'),noches:val('gNoches'),valor_noche:val('gValorNoche'),valor,efectivo:val('gEfectivo'),bancolombia:val('gBancolombia'),nequi:val('gNequi'),bold:val('gBold'),anticipo:val('gAnticipo'),cxc:type==='cxc'?valor:val('gCxc'),descripcion:txt('gConcepto')||txt('gTipo')||txt('gFuente'),referencia:txt('gReferencia'),observaciones:txt('gObs'),...(type==='cxc'?{plazo:val('gPlazo'),fecha_vencimiento:txt('gVencimiento'),estado:txt('gEstado')}: {})};
   }
+  // Un único flujo del lote: botón/F2, validación, confirmación, envío y bloqueo.
+  let operativaBusy=false,cuentasRecaudo=[],consultaRecaudo=Promise.resolve(),revisionCuentas=0;
+  const pendienteKey='ch_operativa_pendiente_v1';
+  const fechaOperativa=v=>/^\d{4}-\d{2}-\d{2}$/.test(v)&&Number.isFinite(Date.parse(v))&&new Date(v).toISOString().slice(0,10)===v;
+  async function consultarCuentas(tercero){
+    const r=await fetch(API_MOV.replace('/movimientos','/cuentas-pendientes')+'?tercero='+encodeURIComponent(tercero));
+    const d=await r.json();if(!r.ok||!d.ok)throw Error(d.error||'No fue posible consultar las cuentas.');return d;
+  }
+  function saldoSeleccionado(){
+    const cuenta=cuentasRecaudo.find(c=>c.id===txt('rec-tipo'));
+    $('rec-cxc-pendiente').dataset.value=cuenta?Number(cuenta.saldo_pendiente):0;
+    actualizarRecaudo();
+  }
+  function cargarCuentas(){
+    const revision=++revisionCuentas,tercero=selected('rec-tercero');cuentasRecaudo=[];
+    $('rec-tipo').replaceChildren(new Option('Seleccione una cuenta pendiente',''));saldoSeleccionado();
+    consultaRecaudo=(async()=>{
+      if(!tercero||$('rec-tercero').value==='__NUEVO_TERCERO__')return;
+      try{
+        const d=await consultarCuentas(tercero);if(revision!==revisionCuentas)return;
+        cuentasRecaudo=d.cxc||[];
+        for(const c of cuentasRecaudo)$('rec-tipo').add(new Option(`${c.concepto||'CxC'} · $${Number(c.saldo_pendiente).toLocaleString('es-CO')} · ${c.id.slice(0,8)}`,c.id));
+        if(cuentasRecaudo.length===1)$('rec-tipo').value=cuentasRecaudo[0].id;
+        saldoSeleccionado();
+        if(!cuentasRecaudo.length)$('rec-mensaje').textContent='El tercero no tiene cuentas pendientes.';
+      }catch(e){if(revision===revisionCuentas)$('rec-mensaje').textContent=e.message;}
+    })();return consultaRecaudo;
+  }
+  $('rec-tercero').addEventListener('change',cargarCuentas);
+  $('rec-tipo').addEventListener('change',saldoSeleccionado);
+  async function guardarOperativa(p,formId,buttonId){
+    if(operativaBusy)return;operativaBusy=true;$(buttonId).disabled=true;
+    const fail=(id,message)=>{const field=$(id);field?.focus();throw Error(message);};
+    try{
+      const generic=formId==='genericMovementForm',prefix=generic?'g':formId==='recaudoForm'?'rec-':'sal-';
+      if(!fechaOperativa(p.fecha))fail(generic?'gFecha':prefix+'fecha','Debes ingresar una fecha de operación válida.');
+      if(p.tipo==='MOVIMIENTO_CONTABLE')fail('gTipo','Pendiente controlado: faltan cuentas y contrapartidas verificables. No se guardará ningún movimiento.');
+      if(['DEVOLUCIÓN DE ANTICIPO','TRASLADO ENTRE CUENTAS'].includes(p.subtipo))fail('sal-tipo','Pendiente controlado: falta el saldo/vínculo del anticipo o las cuentas de origen y destino.');
+      if(!p.tercero||/^seleccione/i.test(p.tercero))fail(generic?'gTercero':prefix+'tercero','Selecciona un tercero existente.');
+      if((prefix==='rec-'||prefix==='sal-')&&$(prefix+'tercero').value==='__NUEVO_TERCERO__')fail(prefix+'tercero','Esta operación requiere un tercero existente. No se crearán terceros automáticamente.');
+      if(!p.descripcion?.trim())fail(generic?'gConcepto':'sal-concepto','Debes ingresar el concepto.');
+      for(const k of ['valor','efectivo','bancolombia','nequi','bold','cxc']){
+        const n=p[k]??0;if(typeof n!=='number'||!Number.isFinite(n)||n<0)fail(generic?'gValor':prefix+'valor',`${k} debe ser un número finito no negativo.`);
+      }
+      if(p.valor<=0)fail(generic?'gValor':prefix+'valor','El valor debe ser mayor que cero.');
+      const pago=p.efectivo+p.bancolombia+p.nequi+p.bold;
+      if(p.tipo==='CUENTA_POR_COBRAR'){
+        if(pago!==0)fail('gValor','Una CxC no recibe dinero.');
+        if(!Number.isInteger(p.plazo)||p.plazo<0)fail('gPlazo','El plazo debe ser un entero no negativo.');
+        if(p.fecha_vencimiento&&!fechaOperativa(p.fecha_vencimiento))fail('gVencimiento','Vencimiento inválido.');
+        if(p.estado==='VENCIDA'&&(!p.fecha_vencimiento||p.fecha_vencimiento>=p.fecha))fail('gVencimiento','VENCIDA requiere vencimiento anterior a la fecha de registro.');
+      }else if(Math.abs(pago-p.valor)>0.005)fail(generic?'gBancolombia':prefix+'bancolombia','Los medios de pago deben sumar exactamente el valor.');
+      if(p.tipo==='RECAUDO'){
+        await consultaRecaudo;
+        const cuenta=cuentasRecaudo.find(c=>c.id===txt('rec-tipo'));p.cuenta_id=cuenta?.id;
+        if(!cuenta)fail('rec-tipo','Selecciona una cuenta por cobrar existente.');
+        if(p.valor>Number(cuenta.saldo_pendiente))fail('rec-valor','El recaudo supera el saldo pendiente.');
+      }
+      if(['PAGO DE CUENTA POR PAGAR','PAGO DE PRÉSTAMO'].includes(p.subtipo)){
+        const d=await consultarCuentas(p.tercero);
+        const cuentas=(d.cxp||[]).filter(c=>p.subtipo!=='PAGO DE PRÉSTAMO'||c.concepto?.startsWith('[CH:PRESTAMO_RECIBIDO]'));
+        if(cuentas.length!==1)fail('sal-tercero','No hay una única CxP identificable. No se elegirá una deuda arbitrariamente.');
+        if(p.valor>Number(cuentas[0].saldo_pendiente))fail('sal-valor','El pago supera el saldo pendiente.');
+        p.cuenta_id=cuentas[0].id;
+      }
+      const anterior=JSON.parse(localStorage.getItem(pendienteKey)||'null');
+      if(anterior&&JSON.stringify(anterior.datos)!==JSON.stringify(p))throw Error('Hay una operación de resultado incierto. Conserva los mismos datos para verificarla/reintentar con el mismo identificador; no crees otra.');
+      if(!window.confirm(`¿Guardar ${p.tipo} por $${p.valor.toLocaleString('es-CO')}?\nCancelar permite volver sin guardar.`))return;
+      const intento=anterior||{datos:p,id:crypto.randomUUID()};localStorage.setItem(pendienteKey,JSON.stringify(intento));
+      try{
+        const d=await window.ControlHotelAPI.crearMovimiento({...p,operacion_id:intento.id});
+        if(!d.ok)throw Error('La API no confirmó la operación. Conserva el identificador.');
+        localStorage.removeItem(pendienteKey);
+        $(formId).style.display='none';$('movementCards').style.display='grid';
+        alert(d.repetida?'La operación ya estaba guardada; no se duplicó.':'Movimiento guardado correctamente.');
+        if(typeof load==='function')await load(false);
+      }catch(e){if(e.status>=400&&e.status<500)localStorage.removeItem(pendienteKey);throw e;}
+    }catch(e){
+      const msg=$(formId==='recaudoForm'?'rec-mensaje':formId==='salidaForm'?'sal-mensaje':'gMsg');if(msg)msg.textContent=e.message;
+      alert('No se pudo guardar: '+e.message);
+    }finally{operativaBusy=false;$(buttonId).disabled=false;}
+  }
+  window.ControlHotelOperativas={cargarCuentas,isSaving:()=>operativaBusy};
   document.addEventListener('click',function(e){
     const id=e.target?.id;
     if(!['saveAloj','saveRecaudo','saveSalida','gSave'].includes(id)) return;
@@ -2090,18 +2175,13 @@ document.querySelectorAll(".nav").forEach(n=>{
       return persist(payloadAloj());
     }
     if(id==='saveRecaudo'){
-      const p=payloadRecaudo(); if(!p.fecha||!p.tercero||p.valor<=0)return alert('Completa fecha, tercero y valor del recaudo.');
-      if(Math.abs(sum('rec-efectivo','rec-bancolombia','rec-nequi','rec-bold')-p.valor)>0.01)return alert('La suma de los medios de pago debe ser igual al recaudo.');
-      return persist(p);
+      return guardarOperativa(payloadRecaudo(),'recaudoForm',id);
     }
     if(id==='saveSalida'){
-      const p=payloadSalida(); if(!p.fecha||!p.tercero||!p.descripcion||p.valor<=0)return alert('Completa los datos obligatorios de la salida.');
-      if(Math.abs(sum('sal-efectivo','sal-bancolombia','sal-nequi','sal-bold')-p.valor)>0.01)return alert('La suma de los medios de pago debe ser exactamente igual a la salida.');
-      return persist(p);
+      return guardarOperativa(payloadSalida(),'salidaForm',id);
     }
     const type=window.currentMovement||null;
-    const p=payloadGeneric(type); if(!p.fecha||!p.tercero||p.valor<=0)return alert('Completa fecha, tercero y valor.');
-    return persist(p);
+    return guardarOperativa(payloadGeneric(type),'genericMovementForm',id);
   },true);
   document.addEventListener('click',function(e){
     if(e.target?.id!=='saveReserva')return;

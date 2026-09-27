@@ -35,9 +35,9 @@ window.ControlHotelAPI = {
     const data = await response.json();
 
     if (!response.ok) {
-      throw new Error(
+      throw Object.assign(new Error(
         data.error || `Error registrando movimiento: ${response.status}`
-      );
+      ), {status:response.status});
     }
 
     return data;
