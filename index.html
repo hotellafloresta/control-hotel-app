@@ -800,6 +800,10 @@ table{width:100%;border-collapse:collapse;font-size:13px}th{text-align:left;colo
 <section class="card sec"><div class="sh"><h2>Resumen rápido</h2><span>API Railway · Supabase</span></div><div id="table">Cargando información…</div></section>
 <div class="footer">Control Hotel · Dashboard nuevo desde cero · Sin datos históricos embebidos en el frontend.</div>
 
+<section id="habitacionesView" style="display:none">
+  <header class="top"><div><div class="ey">Operación</div><h1>Habitaciones</h1><p class="sub">Habitaciones y capacidad registrada.</p></div></header>
+  <div class="card sec"><p id="habitacionesEstado" role="status" aria-live="polite"></p><div id="habitacionesLista" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px"></div></div>
+</section>
 <section id="movimientosView">
   <div class="top">
     <div><div class="ey">Operación</div><h1>Registrar movimientos</h1><p class="sub">Selecciona el movimiento que quieres registrar.</p></div>
@@ -1462,16 +1466,44 @@ document.addEventListener("keydown",e=>{
 </script>
 
 <script>
-document.querySelectorAll(".nav").forEach(n=>{
- if(n.textContent.includes("Registrar movimientos")) n.addEventListener("click",()=>{
-   document.querySelector("main > header").style.display="none";
-   [...document.querySelectorAll("main > section")].forEach(s=>s.id==="movimientosView"?s.style.display="block":s.style.display="none");
+(()=>{
+ const view=document.getElementById('habitacionesView'),status=document.getElementById('habitacionesEstado'),list=document.getElementById('habitacionesLista');
+ let loading=false,loaded=false;
+ async function cargarHabitaciones(){
+  if(loading||loaded)return;
+  loading=true;status.textContent='Cargando habitaciones…';list.replaceChildren();
+  try{
+   const response=await fetch(window.CONTROL_HOTEL_CONFIG.API_URL+'/api/habitaciones');
+   if(!response.ok)throw new Error('HTTP '+response.status);
+   const data=await response.json();
+   if(data.ok!==true||!Array.isArray(data.habitaciones))throw new Error('Respuesta inválida');
+   for(const room of data.habitaciones){
+    const card=document.createElement('article');card.className='card';card.style.padding='16px';
+    const title=document.createElement('h2');title.textContent=String(room.numero??room.nombre??'');
+    const name=document.createElement('p');name.textContent=room.nombre&&String(room.nombre)!==String(room.numero)?room.nombre:'';
+    const capacity=document.createElement('p');capacity.textContent='Capacidad: '+String(room.capacidad??'Sin dato');
+    card.append(title,name,capacity);list.append(card);
+   }
+   loaded=true;status.textContent=data.habitaciones.length?data.habitaciones.length+' habitaciones':'No hay habitaciones para mostrar.';
+  }catch(error){status.textContent='No fue posible cargar las habitaciones. Vuelve a entrar para reintentar.';}
+  finally{loading=false;}
+ }
+ document.querySelectorAll('.nav').forEach(n=>{
+  const label=n.textContent;
+  const target=label.includes('Habitaciones')?'habitaciones':label.includes('Registrar movimientos')?'movimientos':label.includes('Dashboard')?'dashboard':null;
+  if(!target)return;
+  n.addEventListener('click',()=>{
+   document.querySelectorAll('.nav').forEach(item=>item.classList.toggle('active',item===n));
+   document.querySelector('main > header').style.display=target==='dashboard'?'flex':'none';
+   document.querySelectorAll('main > section').forEach(section=>{
+    if(section.id==='habitacionesView')section.style.display=target==='habitaciones'?'block':'none';
+    else if(section.id==='movimientosView')section.style.display=target==='movimientos'?'block':'none';
+    else section.style.display=target==='dashboard'?'grid':'none';
+   });
+   if(target==='habitaciones')cargarHabitaciones();
+  });
  });
- if(n.textContent.includes("Dashboard")) n.addEventListener("click",()=>{
-   document.querySelector("main > header").style.display="flex";
-   [...document.querySelectorAll("main > section")].forEach(s=>s.id==="movimientosView"?s.style.display="none":s.style.display="grid");
- });
-});
+})();
 </script>
 
 
